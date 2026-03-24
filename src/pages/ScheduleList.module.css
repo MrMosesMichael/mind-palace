@@ -1,0 +1,23 @@
+.content {
+  padding: var(--space-md);
+}
+
+.section {
+  margin-bottom: var(--space-xl);
+}
+
+.sectionTitle {
+  font-family: var(--font-display);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 0 0 var(--space-sm) 0;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}

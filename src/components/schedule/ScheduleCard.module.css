@@ -1,0 +1,104 @@
+.card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--space-md);
+  background: var(--color-bg-raised);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-sans);
+  transition: all var(--transition-fast);
+  -webkit-tap-highlight-color: transparent;
+  gap: var(--space-sm);
+}
+
+.card:hover {
+  background: var(--color-bg-hover);
+}
+
+.card.overdue {
+  border-left: 3px solid var(--color-danger);
+}
+
+.card.dueSoon {
+  border-left: 3px solid var(--color-warning);
+}
+
+.card.ok {
+  border-left: 3px solid var(--color-success);
+}
+
+.card.unknown {
+  border-left: 3px solid var(--color-text-muted);
+}
+
+.left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.name {
+  font-weight: 600;
+  font-size: 0.9375rem;
+  color: var(--color-text);
+}
+
+.due {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+}
+
+.lastDone {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.roomName {
+  font-size: 0.6875rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-xs);
+  flex-shrink: 0;
+}
+
+.badge {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+}
+
+.overdue .badge {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+.dueSoon .badge {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.priority {
+  font-size: 0.625rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-muted);
+}
+
+.priority[data-priority="high"],
+.priority[data-priority="critical"] {
+  color: var(--color-warning);
+}

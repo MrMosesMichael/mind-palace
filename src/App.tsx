@@ -4,6 +4,8 @@ import { AppShell } from './components/layout/AppShell';
 import { Dashboard } from './pages/Dashboard';
 import { RoomForm } from './pages/RoomForm';
 import { RoomDetail } from './pages/RoomDetail';
+import { ScheduleList } from './pages/ScheduleList';
+import { ScheduleForm } from './pages/ScheduleForm';
 import { DreamcatcherPage } from './pages/DreamcatcherPage';
 import { Settings } from './pages/Settings';
 import { StubPage } from './pages/StubPage';
@@ -27,10 +29,10 @@ export default function App() {
           <Route path="room/:id" element={<RoomDetail />} />
           <Route path="room/:id/edit" element={<RoomForm />} />
 
-          {/* Schedules (Phase 2) */}
-          <Route path="room/:id/schedules" element={<StubPage title={lore.schedules.title} message={lore.schedules.emptyState} />} />
-          <Route path="room/:id/schedule/new" element={<StubPage title="New Schedule" />} />
-          <Route path="room/:id/schedule/:sid" element={<StubPage title="Edit Schedule" />} />
+          {/* Schedules */}
+          <Route path="room/:id/schedules" element={<ScheduleList />} />
+          <Route path="room/:id/schedule/new" element={<ScheduleForm />} />
+          <Route path="room/:id/schedule/:sid" element={<ScheduleForm />} />
 
           {/* Task Log (Phase 3) */}
           <Route path="room/:id/log" element={<StubPage title={lore.taskLog.title} message={lore.taskLog.emptyState} />} />

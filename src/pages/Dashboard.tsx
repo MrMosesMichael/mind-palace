@@ -4,12 +4,15 @@ import { RoomCard } from '../components/room/RoomCard';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Button } from '../components/ui/Button';
 import { useRooms } from '../hooks/useRooms';
+import { useUrgentReminders } from '../hooks/useReminders';
+import { ScheduleCard } from '../components/schedule/ScheduleCard';
 import { lore } from '../lib/lore';
 import { getAllModules } from '../modules';
 import styles from './Dashboard.module.css';
 
 export function Dashboard() {
   const { rooms } = useRooms();
+  const urgentReminders = useUrgentReminders();
   const navigate = useNavigate();
   const modules = getAllModules();
 
@@ -42,7 +45,33 @@ export function Dashboard() {
           />
         ) : (
           <>
-            {/* TODO: Dreamcatcher overview section goes here in Phase 2 */}
+            {/* Dreamcatcher overview — urgent reminders */}
+            {urgentReminders.length > 0 && (
+              <section className={styles.dreamcatcher}>
+                <h2 className={styles.dreamcatcherTitle}>
+                  <span>🕸</span> {lore.dreamcatcher.title}
+                </h2>
+                <div className={styles.reminderList}>
+                  {urgentReminders.slice(0, 5).map(({ schedule, room }) => (
+                    <ScheduleCard
+                      key={schedule.id}
+                      schedule={schedule}
+                      room={room}
+                      showRoom
+                      onClick={() => navigate(`/room/${room.id}/schedule/${schedule.id}`)}
+                    />
+                  ))}
+                </div>
+                {urgentReminders.length > 5 && (
+                  <button
+                    className={styles.viewAll}
+                    onClick={() => navigate('/dreamcatcher')}
+                  >
+                    View all {urgentReminders.length} reminders →
+                  </button>
+                )}
+              </section>
+            )}
 
             {grouped.map(({ module: mod, rooms: moduleRooms }) => (
               <section key={mod.type} className={styles.section}>
