@@ -116,6 +116,12 @@ export function RoomDetail() {
             description="Parts & supplies on hand"
             to={`${basePath}/inventory`}
           />
+          <Tile
+            label={lore.notes.title}
+            icon="📝"
+            description="Freeform notes & observations"
+            to={`${basePath}/notes`}
+          />
         </div>
 
         <div className={styles.dangerZone}>
