@@ -1,0 +1,105 @@
+/* The Mind Palace — Atmospheric Design Tokens
+   Warm, lived-in, slightly mysterious. Dark wood, amber light, old paper. */
+
+:root {
+  /* Base palette */
+  --color-bg: #0f0b04;
+  --color-bg-raised: #1a1207;
+  --color-bg-surface: #241c0f;
+  --color-bg-hover: #2e2414;
+  --color-bg-active: #382c19;
+
+  /* Amber / warm accent */
+  --color-primary: #d4a34a;
+  --color-primary-hover: #e0b35a;
+  --color-primary-muted: #8b6d2f;
+  --color-primary-bg: rgba(212, 163, 74, 0.1);
+
+  /* Text */
+  --color-text: #e8dcc8;
+  --color-text-secondary: #9c8b72;
+  --color-text-muted: #6b5d4a;
+  --color-text-inverse: #0f0b04;
+
+  /* Status */
+  --color-danger: #c44a3f;
+  --color-danger-bg: rgba(196, 74, 63, 0.12);
+  --color-warning: #d4943a;
+  --color-warning-bg: rgba(212, 148, 58, 0.12);
+  --color-success: #4a8c5c;
+  --color-success-bg: rgba(74, 140, 92, 0.12);
+
+  /* Borders */
+  --color-border: #2e2414;
+  --color-border-subtle: #1f1810;
+  --color-border-focus: var(--color-primary);
+
+  /* Module accents */
+  --color-garage: #4a7ec4;
+  --color-kitchen: #c47a4a;
+  --color-yard: #5c8c4a;
+  --color-home: #8c6a9c;
+
+  /* Typography */
+  --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+  --font-display: 'Georgia', 'Times New Roman', serif;
+
+  /* Spacing */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+
+  /* Radii */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-full: 9999px;
+
+  /* Shadows (warm-tinted) */
+  --shadow-sm: 0 1px 3px rgba(15, 11, 4, 0.4);
+  --shadow-md: 0 4px 12px rgba(15, 11, 4, 0.5);
+  --shadow-lg: 0 8px 24px rgba(15, 11, 4, 0.6);
+  --shadow-glow: 0 0 20px rgba(212, 163, 74, 0.15);
+
+  /* Layout */
+  --header-height: 48px;
+  --bottom-nav-height: 56px;
+  --content-max-width: 640px;
+  --touch-target: 44px;
+
+  /* Transitions */
+  --transition-fast: 150ms ease;
+  --transition-normal: 250ms ease;
+  --transition-slow: 400ms ease;
+}
+
+/* Light mode — available but dark is canonical */
+[data-theme="light"] {
+  --color-bg: #f5f0e8;
+  --color-bg-raised: #faf7f2;
+  --color-bg-surface: #ffffff;
+  --color-bg-hover: #ede7db;
+  --color-bg-active: #e2d9ca;
+
+  --color-primary: #8b6520;
+  --color-primary-hover: #7a5818;
+  --color-primary-muted: #b89454;
+  --color-primary-bg: rgba(139, 101, 32, 0.08);
+
+  --color-text: #1a1207;
+  --color-text-secondary: #5c4f3a;
+  --color-text-muted: #8b7d68;
+  --color-text-inverse: #f5f0e8;
+
+  --color-border: #d9cfbe;
+  --color-border-subtle: #e8e0d2;
+
+  --shadow-sm: 0 1px 3px rgba(26, 18, 7, 0.08);
+  --shadow-md: 0 4px 12px rgba(26, 18, 7, 0.1);
+  --shadow-lg: 0 8px 24px rgba(26, 18, 7, 0.12);
+  --shadow-glow: 0 0 20px rgba(139, 101, 32, 0.1);
+}

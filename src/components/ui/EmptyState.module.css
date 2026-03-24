@@ -1,0 +1,23 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-md);
+  padding: var(--space-2xl) var(--space-md);
+  text-align: center;
+}
+
+.icon {
+  font-size: 2.5rem;
+  color: var(--color-text-muted);
+  opacity: 0.6;
+}
+
+.message {
+  color: var(--color-text-secondary);
+  font-size: 0.9375rem;
+  font-style: italic;
+  max-width: 300px;
+  line-height: 1.5;
+}

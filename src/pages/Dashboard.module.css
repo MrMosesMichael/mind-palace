@@ -1,0 +1,32 @@
+.content {
+  padding: var(--space-md);
+}
+
+.section {
+  margin-bottom: var(--space-xl);
+}
+
+.sectionTitle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-family: var(--font-display);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin: 0 0 var(--space-md) 0;
+  padding-bottom: var(--space-sm);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.sectionIcon {
+  font-size: 1rem;
+}
+
+.roomList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
