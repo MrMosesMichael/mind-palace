@@ -4,8 +4,8 @@ import type { Room } from '../types';
 import { nowISO } from '../lib/formatters';
 
 export function useRooms() {
-  const rooms = useLiveQuery(() => db.rooms.where('isArchived').equals(0).sortBy('updatedAt'));
-  const archivedRooms = useLiveQuery(() => db.rooms.where('isArchived').equals(1).toArray());
+  const rooms = useLiveQuery(() => db.rooms.filter((r) => !r.isArchived).sortBy('updatedAt'));
+  const archivedRooms = useLiveQuery(() => db.rooms.filter((r) => r.isArchived).toArray());
 
   async function addRoom(room: Omit<Room, 'id' | 'createdAt' | 'updatedAt' | 'isArchived'>): Promise<number> {
     const now = nowISO();
