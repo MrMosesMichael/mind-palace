@@ -1,0 +1,87 @@
+import express from 'express';
+import cors from 'cors';
+import helmet from 'helmet';
+import path from 'path';
+import bcrypt from 'bcryptjs';
+import db from './db/index.js';
+import { initializeDatabase } from './db/schema.js';
+import authRoutes from './routes/auth.js';
+import userRoutes from './routes/users.js';
+import syncRoutes from './routes/sync.js';
+import photoRoutes from './routes/photos.js';
+
+const app = express();
+const PORT = Number(process.env.PORT) || 3001;
+
+// Initialize database tables
+initializeDatabase();
+
+// Seed admin user on first run
+seedAdminUser();
+
+// Middleware
+app.use(helmet({
+  contentSecurityPolicy: false, // PWA needs inline styles/scripts
+  crossOriginEmbedderPolicy: false,
+}));
+app.use(cors({
+  origin: process.env.CORS_ORIGIN?.split(',') || ['http://localhost:5173'],
+  credentials: true,
+}));
+app.use(express.json({ limit: '10mb' }));
+
+// Health endpoint
+app.get('/health', (_req, res) => {
+  try {
+    db.prepare('SELECT 1').get();
+    res.json({ status: 'healthy', database: 'connected' });
+  } catch {
+    res.status(503).json({ status: 'unhealthy', database: 'disconnected' });
+  }
+});
+
+// API routes
+app.use('/api/auth', authRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/sync', syncRoutes);
+app.use('/api/photos', photoRoutes);
+
+// Serve PWA static files (built frontend)
+// In production, the built PWA files are copied into dist/public
+const publicPath = path.join(__dirname, 'public');
+app.use(express.static(publicPath));
+
+// SPA fallback — serve index.html for any non-API route
+app.get('*', (req, res) => {
+  if (req.path.startsWith('/api/') || req.path === '/health') {
+    res.status(404).json({ error: 'Not found' });
+    return;
+  }
+  res.sendFile(path.join(publicPath, 'index.html'));
+});
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Mind Palace server running on port ${PORT}`);
+});
+
+function seedAdminUser() {
+  const existingAdmin = db.prepare("SELECT id FROM users WHERE role = 'admin' LIMIT 1").get();
+  if (existingAdmin) return;
+
+  const username = process.env.ADMIN_USERNAME || 'admin';
+  const password = process.env.ADMIN_PASSWORD || 'changeme';
+  const passwordHash = bcrypt.hashSync(password, 12);
+  const now = new Date().toISOString();
+
+  db.prepare(
+    'INSERT INTO users (username, displayName, passwordHash, role, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?)'
+  ).run(username, username, passwordHash, 'admin', now, now);
+
+  // Create default app settings
+  const adminId = (db.prepare("SELECT id FROM users WHERE username = ?").get(username) as any).id;
+  db.prepare(
+    'INSERT INTO app_settings (userId, createdAt, updatedAt) VALUES (?, ?, ?)'
+  ).run(adminId, now, now);
+
+  console.log(`Admin user '${username}' created. Change the password immediately!`);
+}

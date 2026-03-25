@@ -3,8 +3,12 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
 import { Select } from '../components/ui/Select';
+import { Input } from '../components/ui/Input';
 import { db } from '../db';
 import { exportWarehouse, importWarehouse, downloadBlob } from '../services/exportService';
+import { useAuth } from '../contexts/AuthContext';
+import { apiFetch } from '../services/apiClient';
+import { pushSync, getSyncStatus, onSyncStatusChange } from '../services/syncService';
 import { lore, getRandomTip } from '../lib/lore';
 import { formatDate } from '../lib/formatters';
 import type { AppSettings } from '../types';
@@ -13,10 +17,30 @@ import styles from './Settings.module.css';
 export function Settings() {
   const settings = useLiveQuery(() => db.appSettings.toCollection().first());
   const importRef = useRef<HTMLInputElement>(null);
+  const { user, logout } = useAuth();
 
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [statusMsg, setStatusMsg] = useState('');
+  const [syncStatus, setSyncStatus] = useState(getSyncStatus());
+
+  // Sync status listener
+  useEffect(() => {
+    return onSyncStatusChange(setSyncStatus);
+  }, []);
+
+  // User management state (admin only)
+  const [showRegister, setShowRegister] = useState(false);
+  const [newUsername, setNewUsername] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [newDisplayName, setNewDisplayName] = useState('');
+  const [users, setUsers] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (user?.role === 'admin') {
+      apiFetch('/api/users').then(r => r.json()).then(setUsers).catch(() => {});
+    }
+  }, [user?.role]);
 
   // Apply theme on change
   useEffect(() => {
@@ -189,6 +213,70 @@ export function Settings() {
             {isImporting ? 'Unpacking...' : 'Restore from Backup'}
           </Button>
         </section>
+
+        {/* Account */}
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>Account</h2>
+          <div className={styles.accountInfo}>
+            <span className={styles.accountName}>{user?.displayName ?? user?.username}</span>
+            <span className={styles.accountRole}>{user?.role}</span>
+          </div>
+          <div className={styles.syncRow}>
+            <span className={styles.syncDot} data-status={syncStatus} />
+            <span className={styles.description}>
+              {syncStatus === 'syncing' ? 'Syncing...' :
+               syncStatus === 'offline' ? 'Offline — changes queued' :
+               syncStatus === 'error' ? 'Sync error — will retry' :
+               'Synced'}
+            </span>
+            <Button size="sm" variant="ghost" onClick={() => pushSync()}>Sync Now</Button>
+          </div>
+          <Button variant="ghost" size="sm" onClick={logout}>
+            Log Out
+          </Button>
+        </section>
+
+        {/* User Management (admin only) */}
+        {user?.role === 'admin' && (
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>Warehouse Keys</h2>
+            <p className={styles.description}>Manage who has access to the warehouse.</p>
+            <div className={styles.list}>
+              {users.map((u: any) => (
+                <div key={u.id} className={styles.userRow}>
+                  <span>{u.displayName} ({u.username})</span>
+                  <span className={styles.accountRole}>{u.role}</span>
+                </div>
+              ))}
+            </div>
+            {showRegister ? (
+              <form className={styles.registerForm} onSubmit={async (e) => {
+                e.preventDefault();
+                try {
+                  await apiFetch('/api/auth/register', {
+                    method: 'POST',
+                    body: JSON.stringify({ username: newUsername, password: newPassword, displayName: newDisplayName }),
+                  });
+                  setShowRegister(false);
+                  setNewUsername(''); setNewPassword(''); setNewDisplayName('');
+                  const r = await apiFetch('/api/users');
+                  setUsers(await r.json());
+                  setStatusMsg('User created.');
+                } catch { setStatusMsg('Failed to create user.'); }
+              }}>
+                <Input label="Display Name" value={newDisplayName} onChange={e => setNewDisplayName(e.target.value)} required />
+                <Input label="Username" value={newUsername} onChange={e => setNewUsername(e.target.value)} required />
+                <Input label="Password" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required />
+                <div className={styles.row}>
+                  <Button type="submit" size="sm">Create</Button>
+                  <Button type="button" size="sm" variant="ghost" onClick={() => setShowRegister(false)}>Cancel</Button>
+                </div>
+              </form>
+            ) : (
+              <Button size="sm" variant="ghost" onClick={() => setShowRegister(true)}>+ Add User</Button>
+            )}
+          </section>
+        )}
 
         {/* Danger zone */}
         <section className={styles.section}>

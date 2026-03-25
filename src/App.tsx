@@ -1,6 +1,8 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useEffect } from 'react';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AppShell } from './components/layout/AppShell';
+import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { RoomForm } from './pages/RoomForm';
 import { RoomDetail } from './pages/RoomDetail';
@@ -20,62 +22,84 @@ import { StubPage } from './pages/StubPage';
 import { initializeSettings } from './db';
 import { lore } from './lib/lore';
 
-export default function App() {
+function AppRoutes() {
+  const { isLoggedIn, isLoading } = useAuth();
+
   useEffect(() => {
-    initializeSettings();
-  }, []);
+    if (isLoggedIn) initializeSettings();
+  }, [isLoggedIn]);
+
+  if (isLoading) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: 'var(--color-text-muted)' }}>
+        Opening the warehouse...
+      </div>
+    );
+  }
+
+  if (!isLoggedIn) {
+    return <Login />;
+  }
 
   return (
-    <BrowserRouter basename="/mind-palace">
-      <Routes>
-        <Route element={<AppShell />}>
-          {/* Dashboard */}
-          <Route index element={<Dashboard />} />
+    <Routes>
+      <Route element={<AppShell />}>
+        {/* Dashboard */}
+        <Route index element={<Dashboard />} />
 
-          {/* Room CRUD */}
-          <Route path="room/new" element={<RoomForm />} />
-          <Route path="room/:id" element={<RoomDetail />} />
-          <Route path="room/:id/edit" element={<RoomForm />} />
+        {/* Room CRUD */}
+        <Route path="room/new" element={<RoomForm />} />
+        <Route path="room/:id" element={<RoomDetail />} />
+        <Route path="room/:id/edit" element={<RoomForm />} />
 
-          {/* Schedules */}
-          <Route path="room/:id/schedules" element={<ScheduleList />} />
-          <Route path="room/:id/schedule/new" element={<ScheduleForm />} />
-          <Route path="room/:id/schedule/:sid" element={<ScheduleForm />} />
+        {/* Schedules */}
+        <Route path="room/:id/schedules" element={<ScheduleList />} />
+        <Route path="room/:id/schedule/new" element={<ScheduleForm />} />
+        <Route path="room/:id/schedule/:sid" element={<ScheduleForm />} />
 
-          {/* Task Log */}
-          <Route path="room/:id/log" element={<TaskLogList />} />
-          <Route path="room/:id/log/new" element={<TaskLogForm />} />
-          <Route path="room/:id/log/:lid" element={<TaskLogForm />} />
+        {/* Task Log */}
+        <Route path="room/:id/log" element={<TaskLogList />} />
+        <Route path="room/:id/log/new" element={<TaskLogForm />} />
+        <Route path="room/:id/log/:lid" element={<TaskLogForm />} />
 
-          {/* Procedures */}
-          <Route path="room/:id/procedures" element={<ProcedureList />} />
-          <Route path="room/:id/procedure/new" element={<ProcedureForm />} />
-          <Route path="room/:id/procedure/:pid" element={<ProcedureDetail />} />
-          <Route path="room/:id/procedure/:pid/edit" element={<ProcedureForm />} />
+        {/* Procedures */}
+        <Route path="room/:id/procedures" element={<ProcedureList />} />
+        <Route path="room/:id/procedure/new" element={<ProcedureForm />} />
+        <Route path="room/:id/procedure/:pid" element={<ProcedureDetail />} />
+        <Route path="room/:id/procedure/:pid/edit" element={<ProcedureForm />} />
 
-          {/* References */}
-          <Route path="room/:id/references" element={<ReferenceList />} />
+        {/* References */}
+        <Route path="room/:id/references" element={<ReferenceList />} />
 
-          {/* Notes */}
-          <Route path="room/:id/notes" element={<NotesList />} />
+        {/* Notes */}
+        <Route path="room/:id/notes" element={<NotesList />} />
 
-          {/* Inventory */}
-          <Route path="room/:id/inventory" element={<StubPage title={lore.inventory.title} message={lore.inventory.emptyState} />} />
-          <Route path="room/:id/inventory/new" element={<StubPage title="Add to Shelf" />} />
+        {/* Inventory */}
+        <Route path="room/:id/inventory" element={<StubPage title={lore.inventory.title} message={lore.inventory.emptyState} />} />
+        <Route path="room/:id/inventory/new" element={<StubPage title="Add to Shelf" />} />
 
-          {/* Photos */}
-          <Route path="room/:id/photos" element={<PhotoGallery />} />
+        {/* Photos */}
+        <Route path="room/:id/photos" element={<PhotoGallery />} />
 
-          {/* Dreamcatcher */}
-          <Route path="dreamcatcher" element={<DreamcatcherPage />} />
+        {/* Dreamcatcher */}
+        <Route path="dreamcatcher" element={<DreamcatcherPage />} />
 
-          {/* Settings */}
-          <Route path="settings" element={<Settings />} />
+        {/* Settings */}
+        <Route path="settings" element={<Settings />} />
 
-          {/* 404 */}
-          <Route path="*" element={<StubPage title="Lost" message="This room doesn't exist in the warehouse." />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
+        {/* 404 */}
+        <Route path="*" element={<StubPage title="Lost" message="This room doesn't exist in the warehouse." />} />
+      </Route>
+    </Routes>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <BrowserRouter>
+        <AppRoutes />
+      </BrowserRouter>
+    </AuthProvider>
   );
 }

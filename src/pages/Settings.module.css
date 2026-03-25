@@ -76,3 +76,87 @@
   font-size: 0.75rem;
   padding: var(--space-md) 0;
 }
+
+.accountInfo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.accountName {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.accountRole {
+  font-size: 0.6875rem;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  background: var(--color-primary-bg);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  letter-spacing: 0.5px;
+}
+
+.syncRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.syncDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--color-status-ok);
+}
+
+.syncDot[data-status="syncing"] {
+  background: var(--color-primary);
+  animation: pulse 1s infinite;
+}
+
+.syncDot[data-status="offline"] {
+  background: var(--color-text-muted);
+}
+
+.syncDot[data-status="error"] {
+  background: var(--color-danger);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin-bottom: var(--space-md);
+}
+
+.userRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-bg-surface);
+  border-radius: var(--radius-md);
+  font-size: 0.8125rem;
+  color: var(--color-text);
+}
+
+.registerForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  margin-top: var(--space-sm);
+}

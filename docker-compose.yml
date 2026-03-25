@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  mind-palace:
+    build:
+      context: .
+      dockerfile: server/Dockerfile
+      args:
+        - BUILD_FRONTEND=true
+    container_name: mind-palace
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      PORT: 3001
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET}
+      CORS_ORIGIN: https://mind.mdmichael.com
+      DB_PATH: /data/db/mind-palace.sqlite
+      PHOTOS_DIR: /data/photos
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-moses}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD}
+    volumes:
+      - mind-palace-data:/data
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    networks:
+      - mind-palace-internal
+      - nginx-proxy
+    labels:
+      # Traefik routing
+      - "traefik.enable=true"
+      - "traefik.docker.network=nginx-proxy"
+
+      # Main app — serves PWA + API
+      - "traefik.http.routers.mind-palace.rule=Host(`mind.mdmichael.com`)"
+      - "traefik.http.routers.mind-palace.entrypoints=websecure"
+      - "traefik.http.routers.mind-palace.tls.certresolver=letsencrypt"
+      - "traefik.http.services.mind-palace.loadbalancer.server.port=3001"
+
+      # WWW variant (optional)
+      - "traefik.http.routers.mind-palace-www.rule=Host(`www.mind.mdmichael.com`)"
+      - "traefik.http.routers.mind-palace-www.entrypoints=websecure"
+      - "traefik.http.routers.mind-palace-www.tls.certresolver=letsencrypt"
+
+  radicale:
+    image: tomsquest/docker-radicale:latest
+    container_name: mind-palace-caldav
+    restart: unless-stopped
+    volumes:
+      - radicale-data:/data
+      - ./server/radicale/config:/config:ro
+    networks:
+      - mind-palace-internal
+      - nginx-proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=nginx-proxy"
+      - "traefik.http.routers.mind-caldav.rule=Host(`mind.mdmichael.com`) && PathPrefix(`/caldav`)"
+      - "traefik.http.routers.mind-caldav.entrypoints=websecure"
+      - "traefik.http.routers.mind-caldav.tls.certresolver=letsencrypt"
+      - "traefik.http.middlewares.caldav-strip.stripprefix.prefixes=/caldav"
+      - "traefik.http.routers.mind-caldav.middlewares=caldav-strip"
+      - "traefik.http.services.mind-caldav.loadbalancer.server.port=5232"
+
+networks:
+  mind-palace-internal:
+    driver: bridge
+  nginx-proxy:
+    external: true
+
+volumes:
+  mind-palace-data:
+    driver: local
+  radicale-data:
+    driver: local
