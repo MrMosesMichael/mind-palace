@@ -53,7 +53,7 @@ services:
       - CALDAV_PASSWORD=${ADMIN_PASSWORD}
     # Generate htpasswd file from env vars, then start Radicale
     entrypoint: ["/bin/sh"]
-    command: ["-c", "printf '%s:%s\\n' \"$$CALDAV_USER\" \"$$CALDAV_PASSWORD\" > /data/users && exec radicale --config /config/config"]
+    command: ["-c", "printf '%s:%s\\n' \"$$CALDAV_USER\" \"$$CALDAV_PASSWORD\" > /data/users && exec /venv/bin/radicale --config /config/config"]
     volumes:
       - radicale-data:/data
       - ./server/radicale/config.d:/config:ro
