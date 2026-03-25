@@ -1,73 +1,104 @@
-# React + TypeScript + Vite
+# The Mind Palace
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A local-first PWA for organizing maintenance knowledge across every domain of your life — vehicles, kitchen, yard, and home. Themed after the Memory Warehouse from Stephen King's *Dreamcatcher*.
 
-Currently, two official plugins are available:
+**Your knowledge warehouse. File it now, thank yourself later.**
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## What It Does
 
-## React Compiler
+Every maintenance domain shares the same workflow: research the task, gather tools and parts, follow a procedure, take photos, save references, and track when it's due again. The Mind Palace gives each domain a **Room** in your warehouse, with:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- **Schedules** — Time-based and mileage-based recurring tasks with auto-advance on completion
+- **Procedures** — Step-by-step instructions with torque specs, warnings, tips, and supply lists (tools, parts with order links, prices)
+- **Task Log** — History of completed work with cost tracking and labor hours
+- **Photo Wall** — Capture and store photos linked to rooms, procedures, and log entries (OPFS storage with IndexedDB fallback)
+- **Reference Shelf** — YouTube videos, articles, manuals, and links with auto-extracted thumbnails
+- **Notes** — Freeform notes with pin support
+- **The Dreamcatcher** — Cross-room reminder feed that catches what's coming due before it slips through, with Apple Reminders export via `.ics`
 
-## Expanding the ESLint configuration
+## Key Features
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- **100% local-first** — All data stored on-device via IndexedDB (Dexie.js). Zero hosting costs. No accounts.
+- **Full offline PWA** — Install it, use it without internet. Service worker caches everything.
+- **Module system** — Garage module ships first (vehicles with make/model/year/VIN/mileage tracking). Kitchen and Yard modules coming in v2/v3.
+- **Export/Import** — Full data + photos backup as a single ZIP file. Take your warehouse anywhere.
+- **Apple Reminders integration** — Export any schedule as an `.ics` file with native VALARM triggers for real iPhone/macOS notifications.
+- **Atmospheric theming** — Warm dark wood tones, amber accents, and Dreamcatcher lore throughout. Light mode also available.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Tech Stack
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+| Layer | Choice |
+|-------|--------|
+| Framework | React 18 + TypeScript |
+| Build | Vite 8 |
+| Database | Dexie.js (IndexedDB) |
+| Photo Storage | OPFS with IndexedDB fallback |
+| PWA | vite-plugin-pwa (Workbox) |
+| Styling | CSS Modules + CSS custom properties |
+| Export | JSZip |
+| Hosting | GitHub Pages |
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Getting Started
+
+```bash
+# Install dependencies
+npm install
+
+# Start dev server
+npm run dev
+
+# Build for production
+npm run build
+
+# Preview production build
+npm run preview
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Project Structure
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
 ```
+src/
+├── components/        # Reusable UI components
+│   ├── layout/        # AppShell, BottomNav, PageHeader
+│   ├── photo/         # PhotoThumbnail strip
+│   ├── room/          # RoomCard
+│   ├── schedule/      # ScheduleCard
+│   └── ui/            # Button, Input, Select, EmptyState
+├── db/                # Dexie database schema and singleton
+├── hooks/             # React hooks for all CRUD operations
+├── lib/               # Formatters, constants, lore (themed copy)
+├── modules/           # Module definitions (garage, future: kitchen, yard)
+├── pages/             # Route-level page components
+├── services/          # Photo storage, reminders, export/import
+├── styles/            # CSS custom properties (design tokens)
+└── types/             # TypeScript interfaces
+```
+
+## Modules
+
+The core handles rooms, schedules, procedures, photos, references, notes, and reminders. Each **module** extends the core with domain-specific fields and vocabulary:
+
+| Module | Status | Adds |
+|--------|--------|------|
+| **Garage** | v1 (shipped) | Make/model/year/VIN, mileage tracking, torque specs, parts with order links |
+| **Kitchen** | v2 (planned) | Recipes as procedures, pantry inventory, meal planner, grocery lists |
+| **Yard** | v3 (planned) | Seasonal schedules, planting calendar, garden tracking |
+
+Adding a new module means adding a single config file — no new DB tables or core components needed.
+
+## Deployment
+
+Pushes to `main` automatically deploy to GitHub Pages via the included GitHub Actions workflow.
+
+## Roadmap
+
+- [x] **v1** — Garage module + full core (schedules, procedures, task log, photos, references, notes, Dreamcatcher, export/import)
+- [ ] **v2** — Kitchen module (inventory, recipes, meal planner)
+- [ ] **v3** — Yard module (seasonal triggers, planting calendar)
+- [ ] Full-text search across all rooms
+- [ ] Cost tracking dashboard
+- [ ] `clean` branch with IP-stripped neutral theming
+
+## License
+
+MIT
