@@ -52,7 +52,7 @@ services:
     restart: unless-stopped
     volumes:
       - radicale-data:/data
-      - ./server/radicale/config:/config:ro
+      - ./server/radicale/config.d:/config:ro
     networks:
       - mind-palace-internal
       - nginx-proxy
