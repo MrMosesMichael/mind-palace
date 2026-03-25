@@ -2,6 +2,7 @@
 FROM node:22-alpine AS frontend-builder
 WORKDIR /app
 COPY package*.json ./
+COPY .npmrc ./
 COPY tsconfig*.json ./
 COPY vite.config.ts ./
 COPY index.html ./
