@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import path from 'path';
+import fs from 'fs';
 import bcrypt from 'bcryptjs';
 import db from './db/index.js';
 import { initializeDatabase } from './db/schema.js';
@@ -49,15 +50,28 @@ app.use('/api/photos', photoRoutes);
 // Serve PWA static files (built frontend)
 // In production, the built PWA files are copied into dist/public
 const publicPath = path.join(__dirname, 'public');
+const indexPath = path.join(publicPath, 'index.html');
+
+if (fs.existsSync(indexPath)) {
+  console.log(`Serving PWA from ${publicPath}`);
+} else {
+  console.warn(`WARNING: ${indexPath} not found — frontend may not have been built`);
+}
+
 app.use(express.static(publicPath));
 
 // SPA fallback — serve index.html for any non-API route
-app.get('*', (req, res) => {
+// Uses app.use() instead of app.get('*') for Express 5 compatibility
+app.use((req, res) => {
   if (req.path.startsWith('/api/') || req.path === '/health') {
     res.status(404).json({ error: 'Not found' });
     return;
   }
-  res.sendFile(path.join(publicPath, 'index.html'));
+  res.sendFile(indexPath, (err) => {
+    if (err) {
+      res.status(500).json({ error: 'Frontend not available — check server build' });
+    }
+  });
 });
 
 app.listen(PORT, '0.0.0.0', () => {

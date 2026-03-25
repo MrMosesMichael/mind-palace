@@ -50,6 +50,12 @@ services:
     image: tomsquest/docker-radicale:latest
     container_name: mind-palace-caldav
     restart: unless-stopped
+    environment:
+      - CALDAV_USER=${ADMIN_USERNAME:-moses}
+      - CALDAV_PASSWORD=${ADMIN_PASSWORD}
+    # Generate htpasswd file from env vars, then start Radicale
+    entrypoint: [""]
+    command: ["sh", "-c", "printf '%s:%s\\n' \"$CALDAV_USER\" \"$CALDAV_PASSWORD\" > /data/users && exec radicale --config /config/config"]
     volumes:
       - radicale-data:/data
       - ./server/radicale/config.d:/config:ro
