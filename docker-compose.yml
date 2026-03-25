@@ -50,7 +50,7 @@ services:
     restart: unless-stopped
     environment:
       - CALDAV_USER=${ADMIN_USERNAME:-moses}
-      - CALDAV_PASSWORD=${ADMIN_PASSWORD}
+      - CALDAV_PASSWORD=${CALDAV_PASSWORD}
     # Generate htpasswd file from env vars, then start Radicale
     entrypoint: ["/bin/sh"]
     command: ["-c", "printf '%s:%s\\n' \"$$CALDAV_USER\" \"$$CALDAV_PASSWORD\" > /data/users && exec /venv/bin/radicale --config /config/config"]
