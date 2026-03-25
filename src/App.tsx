@@ -13,6 +13,7 @@ import { ProcedureDetail } from './pages/ProcedureDetail';
 import { ProcedureForm } from './pages/ProcedureForm';
 import { ReferenceList } from './pages/ReferenceList';
 import { NotesList } from './pages/NotesList';
+import { PhotoGallery } from './pages/PhotoGallery';
 import { DreamcatcherPage } from './pages/DreamcatcherPage';
 import { Settings } from './pages/Settings';
 import { StubPage } from './pages/StubPage';
@@ -62,8 +63,8 @@ export default function App() {
           <Route path="room/:id/inventory" element={<StubPage title={lore.inventory.title} message={lore.inventory.emptyState} />} />
           <Route path="room/:id/inventory/new" element={<StubPage title="Add to Shelf" />} />
 
-          {/* Photos (Phase 4) */}
-          <Route path="room/:id/photos" element={<StubPage title={lore.photos.title} message={lore.photos.emptyState} />} />
+          {/* Photos */}
+          <Route path="room/:id/photos" element={<PhotoGallery />} />
 
           {/* Dreamcatcher */}
           <Route path="dreamcatcher" element={<DreamcatcherPage />} />
