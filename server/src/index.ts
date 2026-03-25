@@ -11,14 +11,26 @@ import userRoutes from './routes/users.js';
 import syncRoutes from './routes/sync.js';
 import photoRoutes from './routes/photos.js';
 
+// Catch silent crashes
+process.on('uncaughtException', (err) => {
+  console.error('UNCAUGHT EXCEPTION:', err);
+  process.exit(1);
+});
+process.on('unhandledRejection', (err) => {
+  console.error('UNHANDLED REJECTION:', err);
+});
+
 const app = express();
 const PORT = Number(process.env.PORT) || 3001;
 
 // Initialize database tables
-initializeDatabase();
-
-// Seed admin user on first run
-seedAdminUser();
+try {
+  initializeDatabase();
+  seedAdminUser();
+} catch (err) {
+  console.error('Database initialization failed:', err);
+  process.exit(1);
+}
 
 // Middleware
 app.use(helmet({
@@ -74,8 +86,14 @@ app.use((req, res) => {
   });
 });
 
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`Mind Palace server running on port ${PORT}`);
+const server = app.listen(PORT, '0.0.0.0', () => {
+  const addr = server.address();
+  console.log(`Mind Palace server running on port ${PORT}`, addr);
+});
+
+server.on('error', (err) => {
+  console.error('Server error:', err);
+  process.exit(1);
 });
 
 function seedAdminUser() {
