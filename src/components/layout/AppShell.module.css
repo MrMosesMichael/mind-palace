@@ -13,3 +13,18 @@
   width: 100%;
   margin: 0 auto;
 }
+
+/* Tablet: widen content area */
+@media (min-width: 768px) {
+  .content {
+    max-width: var(--content-max-width-tablet);
+    padding-bottom: 0; /* No bottom nav on desktop */
+  }
+}
+
+/* Desktop: full width content */
+@media (min-width: 1024px) {
+  .content {
+    max-width: var(--content-max-width-desktop);
+  }
+}

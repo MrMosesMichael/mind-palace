@@ -28,6 +28,7 @@
   min-height: var(--touch-target);
   transition: color var(--transition-fast);
   -webkit-tap-highlight-color: transparent;
+  position: relative;
 }
 
 .tab:hover {
@@ -61,4 +62,22 @@
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.5px;
+}
+
+.activeIndicator {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 24px;
+  height: 2px;
+  background: var(--color-primary);
+  border-radius: 1px;
+}
+
+/* Hide bottom nav on desktop — replaced by DesktopNav */
+@media (min-width: 768px) {
+  .nav {
+    display: none;
+  }
 }
