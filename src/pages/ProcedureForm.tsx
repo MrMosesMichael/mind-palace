@@ -10,10 +10,36 @@ import {
   useProcedureSteps,
   useSupplies,
 } from '../hooks/useProcedures';
+import { useProcedureReferences } from '../hooks/useReferences';
 import { useRoom } from '../hooks/useRooms';
 import { getModule } from '../modules';
 import { lore } from '../lib/lore';
 import styles from './ProcedureForm.module.css';
+
+/** Parse a fraction string to a number. Handles plain numbers, decimals, simple fractions, and mixed numbers. */
+function parseFraction(value: string): number {
+  const s = value.trim();
+  if (!s) return 1;
+
+  // Plain number or decimal
+  if (/^-?\d+(\.\d+)?$/.test(s)) return Number(s);
+
+  // Simple fraction: "1/3", "3/4"
+  const fractionMatch = s.match(/^(\d+)\s*\/\s*(\d+)$/);
+  if (fractionMatch) {
+    return Number(fractionMatch[1]) / Number(fractionMatch[2]);
+  }
+
+  // Mixed number: "1 1/2", "2 1/3"
+  const mixedMatch = s.match(/^(\d+)\s+(\d+)\s*\/\s*(\d+)$/);
+  if (mixedMatch) {
+    return Number(mixedMatch[1]) + Number(mixedMatch[2]) / Number(mixedMatch[3]);
+  }
+
+  // Fallback
+  const n = Number(s);
+  return isNaN(n) ? 1 : n;
+}
 
 const DIFFICULTY_OPTIONS = [
   { value: 'beginner', label: 'Beginner' },
@@ -36,6 +62,15 @@ const KITCHEN_SUPPLY_CATEGORY_OPTIONS = [
   { value: 'consumable', label: 'Consumable' },
 ];
 
+const REFERENCE_TYPE_OPTIONS = [
+  { value: 'youtube', label: 'YouTube' },
+  { value: 'article', label: 'Article' },
+  { value: 'manual', label: 'Manual' },
+  { value: 'pdf', label: 'PDF' },
+  { value: 'forum', label: 'Forum' },
+  { value: 'other', label: 'Other' },
+];
+
 const DIETARY_TAG_SUGGESTIONS = [
   'vegetarian', 'vegan', 'gluten-free', 'dairy-free', 'keto', 'paleo', 'nut-free',
 ];
@@ -46,6 +81,13 @@ interface StepDraft {
   specs: Record<string, string>;
   warning: string;
   tip: string;
+}
+
+interface ReferenceDraft {
+  id?: number;
+  title: string;
+  url: string;
+  type: string;
 }
 
 interface SupplyDraft {
@@ -75,6 +117,7 @@ export function ProcedureForm() {
   const { addProcedure, updateProcedure, deleteProcedure } = useProcedures(roomId);
   const { addStep, updateStep, deleteStep } = useProcedureSteps(pid ? Number(pid) : undefined);
   const { addSupply, updateSupply, deleteSupply } = useSupplies(pid ? Number(pid) : undefined);
+  const { references: existingReferences, addReference, deleteReference } = useProcedureReferences(pid ? Number(pid) : undefined);
   const navigate = useNavigate();
 
   const isKitchen = room?.moduleType === 'kitchen';
@@ -86,6 +129,7 @@ export function ProcedureForm() {
   const [tagsStr, setTagsStr] = useState('');
   const [stepDrafts, setStepDrafts] = useState<StepDraft[]>([]);
   const [supplyDrafts, setSupplyDrafts] = useState<SupplyDraft[]>([]);
+  const [referenceDrafts, setReferenceDrafts] = useState<ReferenceDraft[]>([]);
   const [loaded, setLoaded] = useState(false);
 
   // Populate when editing
@@ -134,6 +178,19 @@ export function ProcedureForm() {
       setLoaded(true);
     }
   }, [existingSupplies, isEditing, loaded]);
+
+  useEffect(() => {
+    if (isEditing && existingReferences.length > 0 && !loaded) {
+      setReferenceDrafts(
+        existingReferences.map((r) => ({
+          id: r.id,
+          title: r.title,
+          url: r.url,
+          type: r.type,
+        }))
+      );
+    }
+  }, [existingReferences, isEditing, loaded]);
 
   // Step management
   function addStepDraft() {
@@ -191,6 +248,24 @@ export function ProcedureForm() {
 
   function removeSupplyDraft(index: number) {
     setSupplyDrafts((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  // Reference management
+  function addReferenceDraft() {
+    setReferenceDrafts((prev) => [
+      ...prev,
+      { title: '', url: '', type: 'article' },
+    ]);
+  }
+
+  function updateReferenceDraft(index: number, changes: Partial<ReferenceDraft>) {
+    setReferenceDrafts((prev) =>
+      prev.map((r, i) => (i === index ? { ...r, ...changes } : r))
+    );
+  }
+
+  function removeReferenceDraft(index: number) {
+    setReferenceDrafts((prev) => prev.filter((_, i) => i !== index));
   }
 
   function addDietaryTag(tag: string) {
@@ -279,7 +354,7 @@ export function ProcedureForm() {
         supplier: draft.supplier || undefined,
         supplierUrl: draft.supplierUrl || undefined,
         price: draft.price ? Number(draft.price) : undefined,
-        quantity: draft.quantity ? Number(draft.quantity) : 1,
+        quantity: draft.quantity ? parseFraction(draft.quantity) : 1,
         unit: draft.unit || undefined,
         notes: draft.notes || undefined,
         isRequired: draft.isRequired,
@@ -291,7 +366,28 @@ export function ProcedureForm() {
       }
     }
 
-    navigate(`/room/${id}/procedure/${procId}`);
+    // Save references
+    if (isEditing) {
+      const existingRefIds = existingReferences.map((r) => r.id!);
+      const keptRefIds = referenceDrafts.filter((d) => d.id).map((d) => d.id!);
+      for (const eid of existingRefIds) {
+        if (!keptRefIds.includes(eid)) await deleteReference(eid);
+      }
+    }
+
+    for (const draft of referenceDrafts) {
+      if (!draft.title.trim() && !draft.url.trim()) continue;
+      if (!draft.id) {
+        await addReference({
+          procedureId: procId,
+          title: draft.title || draft.url,
+          url: draft.url,
+          type: draft.type as Reference['type'],
+        });
+      }
+    }
+
+    navigate(`/room/${id}/procedure/${procId}`, isEditing ? undefined : { replace: true });
   }
 
   async function handleDelete() {
@@ -329,12 +425,17 @@ export function ProcedureForm() {
             required
           />
 
-          <Input
-            label="Description"
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder={isKitchen ? 'A brief description of this recipe' : 'Overview of what this procedure covers'}
-          />
+          <div className={styles.descriptionField}>
+            <label className={styles.descLabel} htmlFor="proc-description">Description</label>
+            <textarea
+              id="proc-description"
+              className={styles.textarea}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder={isKitchen ? 'A brief description of this recipe' : 'Overview of what this procedure covers'}
+              rows={3}
+            />
+          </div>
 
           <div className={styles.row}>
             <Input
@@ -424,10 +525,11 @@ export function ProcedureForm() {
               <div className={styles.row}>
                 <Input
                   label="Quantity"
-                  type="number"
-                  step="0.25"
+                  type={supply.category === 'ingredient' ? 'text' : 'number'}
+                  step={supply.category === 'ingredient' ? undefined : '0.25'}
                   value={supply.quantity}
                   onChange={(e) => updateSupplyDraft(index, { quantity: e.target.value })}
+                  placeholder={supply.category === 'ingredient' ? '1/3, 2.5, 1 1/2' : undefined}
                 />
                 {supply.category !== 'tool' && supply.category !== 'ingredient' && (
                   <Input
@@ -569,6 +671,40 @@ export function ProcedureForm() {
           </Button>
         </fieldset>
 
+        {/* References */}
+        <fieldset className={styles.fieldset}>
+          <legend className={styles.legend}>References</legend>
+
+          {referenceDrafts.map((ref, index) => (
+            <div key={index} className={styles.supplyEditor}>
+              <div className={styles.supplyHeader}>
+                <Select
+                  value={ref.type}
+                  onChange={(e) => updateReferenceDraft(index, { type: e.target.value })}
+                  options={REFERENCE_TYPE_OPTIONS}
+                />
+                <button type="button" className={styles.iconBtn} onClick={() => removeReferenceDraft(index)}>{'\u2715'}</button>
+              </div>
+              <Input
+                label="Title"
+                value={ref.title}
+                onChange={(e) => updateReferenceDraft(index, { title: e.target.value })}
+                placeholder="How to make perfect chili"
+              />
+              <Input
+                label="URL"
+                value={ref.url}
+                onChange={(e) => updateReferenceDraft(index, { url: e.target.value })}
+                placeholder="https://..."
+              />
+            </div>
+          ))}
+
+          <Button type="button" variant="secondary" size="sm" onClick={addReferenceDraft}>
+            + Add Reference
+          </Button>
+        </fieldset>
+
         {/* Actions */}
         <div className={styles.actions}>
           {isEditing && (
@@ -592,3 +728,4 @@ export function ProcedureForm() {
 // Re-export types used in the form for the type reference
 type Procedure = import('../types').Procedure;
 type Supply = import('../types').Supply;
+type Reference = import('../types').Reference;

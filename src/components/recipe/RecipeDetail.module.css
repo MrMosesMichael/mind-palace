@@ -88,6 +88,14 @@
   margin: 0;
 }
 
+/* Sidebar */
+.sidebar {
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
 /* Sections */
 .section {
   margin-top: var(--space-sm);
@@ -307,6 +315,10 @@
     grid-column: 1 / -1;
   }
 
-  /* Servings adjuster goes in left column */
-  /* Sections flow naturally in the grid */
+  /* Sidebar (servings + ingredients + equipment) stays contained */
+  .sidebar {
+    align-self: start;
+  }
+
+  /* Steps section spans the main column */
 }

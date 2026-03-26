@@ -173,6 +173,19 @@
   border-color: var(--color-kitchen);
 }
 
+/* Description textarea */
+.descriptionField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.descLabel {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+}
+
 .addButtons {
   display: flex;
   gap: var(--space-sm);

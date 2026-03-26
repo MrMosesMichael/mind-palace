@@ -33,3 +33,29 @@ export function useReferences(roomId: number | undefined) {
     deleteReference,
   };
 }
+
+export function useProcedureReferences(procedureId: number | undefined) {
+  const references = useLiveQuery(
+    () =>
+      procedureId
+        ? db.references.where('procedureId').equals(procedureId).toArray()
+        : Promise.resolve([] as Reference[]),
+    [procedureId]
+  );
+
+  async function addReference(
+    ref: Omit<Reference, 'id' | 'createdAt'>
+  ): Promise<number> {
+    return db.references.add({ ...ref, createdAt: nowISO() } as Reference);
+  }
+
+  async function deleteReference(id: number) {
+    await db.references.delete(id);
+  }
+
+  return {
+    references: references ?? [],
+    addReference,
+    deleteReference,
+  };
+}

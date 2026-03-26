@@ -77,31 +77,35 @@ export function RecipeDetail({
         <p className={styles.description}>{procedure.description}</p>
       )}
 
-      {/* Servings adjuster */}
-      <ServingsAdjuster servings={servings} onChange={setServings} />
+      {/* Sidebar: servings, ingredients, equipment */}
+      {(ingredients.length > 0 || equipment.length > 0) ? (
+        <div className={styles.sidebar}>
+          <ServingsAdjuster servings={servings} onChange={setServings} />
 
-      {/* Ingredients */}
-      {ingredients.length > 0 && (
-        <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>{lore.recipes.ingredients}</h2>
-          <IngredientList ingredients={ingredients} multiplier={multiplier} />
-        </section>
-      )}
+          {ingredients.length > 0 && (
+            <section className={styles.section}>
+              <h2 className={styles.sectionTitle}>{lore.recipes.ingredients}</h2>
+              <IngredientList ingredients={ingredients} multiplier={multiplier} />
+            </section>
+          )}
 
-      {/* Equipment */}
-      {equipment.length > 0 && (
-        <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>{lore.recipes.equipment}</h2>
-          <ul className={styles.equipmentList}>
-            {equipment.map((item) => (
-              <li key={item.id} className={styles.equipmentItem}>
-                <span className={styles.equipmentIcon}>{'\uD83C\uDF73'}</span>
-                <span>{item.name}</span>
-                {item.identifier && <span className={styles.equipmentSpec}>{item.identifier}</span>}
-              </li>
-            ))}
-          </ul>
-        </section>
+          {equipment.length > 0 && (
+            <section className={styles.section}>
+              <h2 className={styles.sectionTitle}>{lore.recipes.equipment}</h2>
+              <ul className={styles.equipmentList}>
+                {equipment.map((item) => (
+                  <li key={item.id} className={styles.equipmentItem}>
+                    <span className={styles.equipmentIcon}>{'\uD83C\uDF73'}</span>
+                    <span>{item.name}</span>
+                    {item.identifier && <span className={styles.equipmentSpec}>{item.identifier}</span>}
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </div>
+      ) : (
+        <ServingsAdjuster servings={servings} onChange={setServings} />
       )}
 
       {/* Steps */}

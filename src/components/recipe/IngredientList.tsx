@@ -24,8 +24,29 @@ export function IngredientList({ ingredients, multiplier }: IngredientListProps)
 
   function formatQuantity(qty: number): string {
     const scaled = qty * multiplier;
-    // Clean up floating point
+
+    // Common fraction lookup table
+    const fractions: [number, string][] = [
+      [0.25, '1/4'],
+      [1 / 3, '1/3'],
+      [0.5, '1/2'],
+      [2 / 3, '2/3'],
+      [0.75, '3/4'],
+    ];
+
     if (Number.isInteger(scaled)) return scaled.toString();
+
+    const whole = Math.floor(scaled);
+    const remainder = scaled - whole;
+
+    // Try to match the fractional part to a common fraction
+    for (const [fracVal, fracStr] of fractions) {
+      if (Math.abs(remainder - fracVal) < 0.02) {
+        return whole > 0 ? `${whole} ${fracStr}` : fracStr;
+      }
+    }
+
+    // Non-standard fraction: show 1 decimal place
     return scaled.toFixed(1).replace(/\.0$/, '');
   }
 
