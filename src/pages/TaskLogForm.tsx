@@ -88,7 +88,7 @@ export function TaskLogForm() {
       navigate(`/room/${id}/log`);
     } else {
       await addTaskLog(data);
-      navigate(`/room/${id}/log`);
+      navigate(`/room/${id}/log`, { replace: true });
     }
   }
 

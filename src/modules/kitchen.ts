@@ -14,8 +14,6 @@ export const kitchenModule: ModuleDefinition = {
       required: true,
       options: ['full-kitchen', 'pantry', 'appliance', 'outdoor-grill'],
     },
-    { key: 'applianceBrand', label: 'Appliance Brand', type: 'text', placeholder: 'KitchenAid' },
-    { key: 'applianceModel', label: 'Appliance Model', type: 'text', placeholder: 'KSM150PS' },
     { key: 'purchaseDate', label: 'Purchase Date', type: 'date' },
   ],
   trackingUnit: null,

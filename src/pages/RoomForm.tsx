@@ -70,7 +70,7 @@ export function RoomForm() {
         description: description || undefined,
         metadata: processedMetadata,
       });
-      navigate(`/room/${newId}`);
+      navigate(`/room/${newId}`, { replace: true });
     }
   }
 
@@ -88,6 +88,8 @@ export function RoomForm() {
             value={selectedModuleType}
             onChange={(e) => {
               setSelectedModuleType(e.target.value);
+              setName('');
+              setDescription('');
               setMetadata({});
             }}
             options={modules.map((m) => ({ value: m.type, label: m.label }))}
