@@ -6,9 +6,8 @@ import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { useSchedules, useSchedule } from '../hooks/useSchedules';
 import { useRoom } from '../hooks/useRooms';
-import { getModule } from '../modules';
+import { getModule, getModuleIcon } from '../modules';
 import { lore } from '../lib/lore';
-import { todayISO } from '../lib/formatters';
 import styles from './ScheduleForm.module.css';
 
 const PRIORITY_OPTIONS = [
@@ -46,6 +45,7 @@ export function ScheduleForm() {
   const [isActive, setIsActive] = useState(true);
   const [lastCompletedDate, setLastCompletedDate] = useState('');
   const [lastCompletedValue, setLastCompletedValue] = useState('');
+  const [nextDueDateManual, setNextDueDateManual] = useState('');
   const [showDefaults, setShowDefaults] = useState(false);
 
   useEffect(() => {
@@ -59,6 +59,7 @@ export function ScheduleForm() {
       setIsActive(existingSchedule.isActive);
       setLastCompletedDate(existingSchedule.lastCompletedDate ?? '');
       setLastCompletedValue(existingSchedule.lastCompletedValue?.toString() ?? '');
+      setNextDueDateManual(existingSchedule.nextDueDate ?? '');
     }
   }, [existingSchedule]);
 
@@ -71,7 +72,7 @@ export function ScheduleForm() {
     setShowDefaults(false);
   }
 
-  function computeNextDue(): { nextDueDate?: string; nextDueValue?: number } {
+  function computeNextDueFromCompletion(): { nextDueDate?: string; nextDueValue?: number } {
     if (triggerType === 'time' && intervalValue && lastCompletedDate) {
       const completed = new Date(lastCompletedDate);
       const next = new Date(completed);
@@ -92,10 +93,14 @@ export function ScheduleForm() {
     return {};
   }
 
+  // The auto-computed next due date from last completed + interval
+  const computedNextDue = computeNextDueFromCompletion();
+  // Show the computed value only when no manual override is set
+  const effectiveNextDueDate = nextDueDateManual || computedNextDue.nextDueDate;
+  const isAutoComputed = !nextDueDateManual && !!computedNextDue.nextDueDate;
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-
-    const nextDue = computeNextDue();
 
     const data = {
       roomId,
@@ -106,19 +111,19 @@ export function ScheduleForm() {
       intervalUnit: triggerType === 'mileage' ? (mod?.trackingUnit ?? 'miles') : intervalUnit,
       lastCompletedDate: lastCompletedDate || undefined,
       lastCompletedValue: lastCompletedValue ? Number(lastCompletedValue) : undefined,
-      nextDueDate: nextDue.nextDueDate,
-      nextDueValue: nextDue.nextDueValue,
+      nextDueDate: nextDueDateManual || computedNextDue.nextDueDate,
+      nextDueValue: computedNextDue.nextDueValue,
       priority: priority as 'low' | 'medium' | 'high' | 'critical',
       isActive,
     };
 
     if (isEditing && existingSchedule) {
       await updateSchedule(existingSchedule.id!, data);
+      navigate(`/room/${id}/schedules`);
     } else {
       await addSchedule(data);
+      navigate(`/room/${id}/schedules`, { replace: true });
     }
-
-    navigate(`/room/${id}/schedules`);
   }
 
   async function handleDelete() {
@@ -138,6 +143,13 @@ export function ScheduleForm() {
         subtitle={room?.name}
         showBack
       />
+
+      {room && mod && (
+        <div className={styles.contextBanner}>
+          <span className={styles.contextIcon}>{getModuleIcon(mod.icon)}</span>
+          <span>Scheduling for: <span className={styles.contextName}>{room.name}</span></span>
+        </div>
+      )}
 
       <form className={styles.form} onSubmit={handleSubmit}>
         {/* Default schedule suggestions */}
@@ -234,7 +246,6 @@ export function ScheduleForm() {
             type="date"
             value={lastCompletedDate}
             onChange={(e) => setLastCompletedDate(e.target.value)}
-            max={todayISO()}
           />
 
           {triggerType === 'mileage' && (
@@ -247,6 +258,26 @@ export function ScheduleForm() {
             />
           )}
         </fieldset>
+
+        {/* Next due date */}
+        {triggerType === 'time' && (
+          <fieldset className={styles.fieldset}>
+            <legend className={styles.legend}>Next Due Date</legend>
+
+            <Input
+              label="Next Due Date"
+              type="date"
+              value={nextDueDateManual || effectiveNextDueDate || ''}
+              onChange={(e) => setNextDueDateManual(e.target.value)}
+            />
+
+            {isAutoComputed && !nextDueDateManual && (
+              <span className={styles.computedNote}>
+                Computed from last completed + interval
+              </span>
+            )}
+          </fieldset>
+        )}
 
         {/* Active toggle */}
         <label className={styles.toggle}>

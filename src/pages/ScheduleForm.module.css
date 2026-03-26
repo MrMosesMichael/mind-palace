@@ -95,6 +95,34 @@
   color: var(--color-text-muted);
 }
 
+.computedNote {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.contextBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-primary-bg);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  font-size: 0.875rem;
+  color: var(--color-text-secondary);
+  margin: 0 var(--space-md);
+}
+
+.contextIcon {
+  font-size: 1.25rem;
+}
+
+.contextName {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
 .actions {
   display: flex;
   align-items: center;
