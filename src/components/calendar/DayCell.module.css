@@ -1,0 +1,96 @@
+.cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: var(--space-xs) 2px;
+  min-height: 48px;
+  background: var(--color-bg-raised);
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: var(--font-sans);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.cell:hover {
+  background: var(--color-bg-hover);
+}
+
+.cell.muted {
+  opacity: 0.35;
+}
+
+.cell.today {
+  border-color: var(--color-primary);
+  background: var(--color-primary-bg);
+}
+
+.cell.selected {
+  border-color: var(--color-primary);
+  background: var(--color-primary-bg);
+  box-shadow: var(--shadow-glow);
+}
+
+.dayNum {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text);
+  line-height: 1;
+}
+
+.today .dayNum {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.dots {
+  display: flex;
+  gap: 2px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+}
+
+.dotOverdue {
+  background: var(--color-danger);
+}
+
+.hasOverdue {
+  border-color: rgba(196, 74, 63, 0.4);
+}
+
+.more {
+  font-size: 0.4375rem;
+  color: var(--color-text-muted);
+  line-height: 1;
+}
+
+/* ── Desktop responsive ── */
+@media (min-width: 768px) {
+  .cell {
+    min-height: 64px;
+    padding: var(--space-sm) var(--space-xs);
+    gap: var(--space-xs);
+  }
+
+  .dayNum {
+    font-size: 0.875rem;
+  }
+
+  .dot {
+    width: 7px;
+    height: 7px;
+  }
+
+  .more {
+    font-size: 0.5625rem;
+  }
+}

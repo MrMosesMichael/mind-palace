@@ -17,6 +17,7 @@ import { ReferenceList } from './pages/ReferenceList';
 import { NotesList } from './pages/NotesList';
 import { PhotoGallery } from './pages/PhotoGallery';
 import { DreamcatcherPage } from './pages/DreamcatcherPage';
+import { Calendar } from './pages/Calendar';
 import { Settings } from './pages/Settings';
 import { StubPage } from './pages/StubPage';
 import { initializeSettings } from './db';
@@ -80,6 +81,9 @@ function AppRoutes() {
 
         {/* Photos */}
         <Route path="room/:id/photos" element={<PhotoGallery />} />
+
+        {/* Calendar */}
+        <Route path="calendar" element={<Calendar />} />
 
         {/* Dreamcatcher */}
         <Route path="dreamcatcher" element={<DreamcatcherPage />} />

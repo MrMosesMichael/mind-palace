@@ -1,0 +1,53 @@
+.grid {
+  width: 100%;
+}
+
+.header {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+  margin-bottom: var(--space-xs);
+}
+
+.dayName {
+  text-align: center;
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: var(--space-xs) 0;
+}
+
+.body {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.week {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 1px;
+}
+
+/* ── Desktop responsive ── */
+@media (min-width: 768px) {
+  .header {
+    gap: var(--space-xs);
+    margin-bottom: var(--space-sm);
+  }
+
+  .dayName {
+    font-size: 0.75rem;
+    padding: var(--space-sm) 0;
+  }
+
+  .body {
+    gap: var(--space-xs);
+  }
+
+  .week {
+    gap: var(--space-xs);
+  }
+}
