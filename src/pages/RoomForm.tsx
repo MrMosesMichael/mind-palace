@@ -5,7 +5,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { useRooms, useRoom } from '../hooks/useRooms';
-import { getAllModules, getModule } from '../modules';
+import { getAllModules, getModule, getModuleIcon } from '../modules';
 import { lore } from '../lib/lore';
 import type { ModuleDefinition } from '../types/modules';
 import styles from './RoomForm.module.css';
@@ -97,7 +97,7 @@ export function RoomForm() {
 
         {!isEditing && modules.length === 1 && (
           <div className={styles.moduleTag}>
-            {selectedModule?.icon === 'wrench' ? '🔧' : '📦'} {selectedModule?.label}
+            {selectedModule ? getModuleIcon(selectedModule.icon) : '\uD83D\uDCE6'} {selectedModule?.label}
           </div>
         )}
 
@@ -105,7 +105,14 @@ export function RoomForm() {
           label={`${selectedModule?.roomLabel ?? 'Room'} Name`}
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder={selectedModule?.type === 'garage' ? 'My Tacoma' : 'Name this room'}
+          placeholder={
+            selectedModule?.type === 'garage' ? 'My Tacoma' :
+            selectedModule?.type === 'kitchen' ? 'Main Kitchen' :
+            selectedModule?.type === 'yard' ? 'Front Lawn' :
+            selectedModule?.type === 'bathroom' ? 'Master Bathroom' :
+            selectedModule?.type === 'home' ? 'Central HVAC' :
+            'Name this room'
+          }
           required
         />
 
@@ -135,7 +142,7 @@ export function RoomForm() {
             <Input
               key={field.key}
               label={field.label}
-              type={field.type === 'number' ? 'number' : 'text'}
+              type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
               value={metadata[field.key] ?? ''}
               onChange={(e) => handleMetadataChange(field.key, e.target.value)}
               placeholder={field.placeholder}

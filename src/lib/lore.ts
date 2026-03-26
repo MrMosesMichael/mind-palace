@@ -11,6 +11,7 @@ export const lore = {
   nav: {
     hallway: 'The Hallway',
     dreamcatcher: 'Dreamcatcher',
+    calendar: 'Calendar',
     settings: 'Settings',
     addRoom: 'Open a New Room',
   },
@@ -23,6 +24,11 @@ export const lore = {
     dreamcatcherEmpty: 'The Dreamcatcher has nothing to report.',
     dreamcatcherOverdue: 'The Dreamcatcher caught something.',
     dreamcatcherClear: 'All clear. Nothing slipping through.',
+    greeting: {
+      morning: 'Good morning.',
+      afternoon: 'Good afternoon.',
+      evening: 'Good evening.',
+    },
   },
 
   // Rooms
@@ -40,6 +46,20 @@ export const lore = {
     newProcedure: 'File a new procedure',
     steps: 'Steps',
     supplies: 'Supply List',
+  },
+
+  // Recipes (kitchen variant of procedures)
+  recipes: {
+    title: 'Recipe Book',
+    emptyState: 'The recipe book is empty. No recipes have been written yet.',
+    newRecipe: 'Write a new recipe',
+    steps: 'Instructions',
+    ingredients: 'Ingredients',
+    equipment: 'Equipment',
+    servings: 'Servings',
+    prepTime: 'Prep Time',
+    cookTime: 'Cook Time',
+    totalTime: 'Total Time',
   },
 
   // Schedules
@@ -104,6 +124,45 @@ export const lore = {
     themeTitle: 'Atmosphere',
   },
 
+  // Module-specific empty states
+  moduleEmpty: {
+    garage: {
+      message: 'The garage is empty. No vehicles or equipment registered.',
+      icon: '\uD83D\uDD27',
+    },
+    kitchen: {
+      message: 'The kitchen is quiet. No areas or appliances catalogued yet.',
+      icon: '\uD83D\uDD25',
+    },
+    yard: {
+      message: 'The yard is untended. No zones have been mapped yet.',
+      icon: '\uD83C\uDF3F',
+    },
+    bathroom: {
+      message: 'The bathrooms are uncharted. No fixtures have been catalogued.',
+      icon: '\uD83D\uDCA7',
+    },
+    home: {
+      message: 'No home systems registered. The infrastructure is unmapped.',
+      icon: '\uD83C\uDFE0',
+    },
+  } as Record<string, { message: string; icon: string }>,
+
+  // Calendar
+  calendar: {
+    title: 'Calendar',
+    emptyDay: 'Nothing scheduled for this day.',
+    today: 'Today',
+  },
+
+  // Search
+  search: {
+    title: 'Search the Warehouse',
+    placeholder: 'Search rooms, schedules, procedures...',
+    noResults: 'Nothing found in the warehouse.',
+    recentSearches: 'Recent Searches',
+  },
+
   // General
   loading: 'Reaching into the warehouse...',
   saving: 'Filing away...',
@@ -118,10 +177,23 @@ export const lore = {
     'File it now, thank yourself later.',
     'Knowledge warehoused is knowledge preserved.',
     'The Dreamcatcher catches what matters.',
+    'A stitch in time saves nine. Schedule it.',
+    'The best maintenance is preventive maintenance.',
+    'An organized home is a peaceful home.',
+    'Recipes are procedures for the kitchen.',
+    'Every system needs a keeper.',
   ],
 } as const;
 
 /** Get a random tip from the lore */
 export function getRandomTip(): string {
   return lore.tips[Math.floor(Math.random() * lore.tips.length)];
+}
+
+/** Get time-of-day greeting */
+export function getGreeting(): string {
+  const hour = new Date().getHours();
+  if (hour < 12) return lore.hallway.greeting.morning;
+  if (hour < 17) return lore.hallway.greeting.afternoon;
+  return lore.hallway.greeting.evening;
 }
