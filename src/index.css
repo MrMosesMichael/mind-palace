@@ -63,3 +63,104 @@ button {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-text-muted);
 }
+
+/* Page transition animations */
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Staggered list entry animation */
+@keyframes listItemEnter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Skeleton loading shimmer */
+@keyframes shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--color-bg-raised) 0px,
+    var(--color-bg-hover) 40px,
+    var(--color-bg-raised) 80px
+  );
+  background-size: 200px 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: var(--radius-sm);
+}
+
+/* Utility: animate page content */
+.page-enter {
+  animation: pageEnter var(--transition-page) both;
+}
+
+/* Status pill component — reusable */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 2px 10px;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+.status-pill--overdue {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+.status-pill--due-soon {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.status-pill--ok {
+  background: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.status-pill--unknown {
+  background: var(--color-bg-surface);
+  color: var(--color-text-muted);
+}

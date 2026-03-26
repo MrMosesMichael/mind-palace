@@ -18,7 +18,7 @@
   /* Text */
   --color-text: #e8dcc8;
   --color-text-secondary: #9c8b72;
-  --color-text-muted: #6b5d4a;
+  --color-text-muted: #91816d;
   --color-text-inverse: #0f0b04;
 
   /* Status */
@@ -38,7 +38,15 @@
   --color-garage: #4a7ec4;
   --color-kitchen: #c47a4a;
   --color-yard: #5c8c4a;
+  --color-bathroom: #5ba3b5;
   --color-home: #8c6a9c;
+
+  /* Module background tints */
+  --color-garage-bg: rgba(74, 126, 196, 0.06);
+  --color-kitchen-bg: rgba(196, 122, 74, 0.06);
+  --color-yard-bg: rgba(92, 140, 74, 0.06);
+  --color-bathroom-bg: rgba(91, 163, 181, 0.06);
+  --color-home-bg: rgba(140, 106, 156, 0.06);
 
   /* Typography */
   --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
@@ -64,17 +72,26 @@
   --shadow-md: 0 4px 12px rgba(15, 11, 4, 0.5);
   --shadow-lg: 0 8px 24px rgba(15, 11, 4, 0.6);
   --shadow-glow: 0 0 20px rgba(212, 163, 74, 0.15);
+  --shadow-hover: 0 6px 16px rgba(15, 11, 4, 0.55);
 
   /* Layout */
   --header-height: 48px;
   --bottom-nav-height: 56px;
   --content-max-width: 640px;
+  --content-max-width-tablet: 768px;
+  --content-max-width-desktop: 960px;
+  --desktop-nav-height: 56px;
   --touch-target: 44px;
+
+  /* Breakpoints (for reference; used directly in media queries) */
+  /* --bp-tablet: 768px; */
+  /* --bp-desktop: 1024px; */
 
   /* Transitions */
   --transition-fast: 150ms ease;
   --transition-normal: 250ms ease;
   --transition-slow: 400ms ease;
+  --transition-page: 200ms ease-out;
 }
 
 /* Light mode — available but dark is canonical */
@@ -92,7 +109,7 @@
 
   --color-text: #1a1207;
   --color-text-secondary: #5c4f3a;
-  --color-text-muted: #8b7d68;
+  --color-text-muted: #736554;
   --color-text-inverse: #f5f0e8;
 
   --color-border: #d9cfbe;
@@ -102,4 +119,11 @@
   --shadow-md: 0 4px 12px rgba(26, 18, 7, 0.1);
   --shadow-lg: 0 8px 24px rgba(26, 18, 7, 0.12);
   --shadow-glow: 0 0 20px rgba(139, 101, 32, 0.1);
+  --shadow-hover: 0 6px 16px rgba(26, 18, 7, 0.11);
+
+  --color-garage-bg: rgba(74, 126, 196, 0.05);
+  --color-kitchen-bg: rgba(196, 122, 74, 0.05);
+  --color-yard-bg: rgba(92, 140, 74, 0.05);
+  --color-bathroom-bg: rgba(91, 163, 181, 0.05);
+  --color-home-bg: rgba(140, 106, 156, 0.05);
 }

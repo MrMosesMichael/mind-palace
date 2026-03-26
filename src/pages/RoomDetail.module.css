@@ -1,3 +1,15 @@
+.page {
+  animation: pageEnter var(--transition-page) both;
+  background: var(--module-bg, transparent);
+  min-height: 100%;
+}
+
+.accentBar {
+  height: 3px;
+  background: var(--module-accent, var(--color-primary));
+  opacity: 0.6;
+}
+
 .content {
   padding: var(--space-md);
 }
@@ -9,6 +21,7 @@
   padding: var(--space-md);
   background: var(--color-bg-raised);
   border: 1px solid var(--color-border);
+  border-left: 3px solid var(--module-accent, var(--color-primary));
   border-radius: var(--radius-md);
   margin-bottom: var(--space-lg);
 }
@@ -49,21 +62,61 @@
   transition: all var(--transition-fast);
   min-height: 90px;
   -webkit-tap-highlight-color: transparent;
+  position: relative;
 }
 
 .tile:hover {
   background: var(--color-bg-hover);
   box-shadow: var(--shadow-sm);
+  transform: translateY(-1px);
+}
+
+.tileTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
 }
 
 .tileIcon {
   font-size: 1.5rem;
 }
 
+.tileBadge {
+  font-size: 0.5rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  padding: 2px 6px;
+  border-radius: var(--radius-full);
+  white-space: nowrap;
+}
+
+.tileBadge_overdue {
+  background: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+.tileBadge_due-soon {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+}
+
+.tileBadge_neutral {
+  background: var(--color-bg-surface);
+  color: var(--color-text-muted);
+}
+
 .tileLabel {
   font-weight: 600;
   font-size: 0.875rem;
   color: var(--color-text);
+}
+
+.tileCount {
+  font-weight: 400;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
 }
 
 .tileDesc {
@@ -77,4 +130,27 @@
   border-top: 1px solid var(--color-border-subtle);
   display: flex;
   justify-content: center;
+}
+
+/* ── Desktop responsive ── */
+@media (min-width: 768px) {
+  .tileGrid {
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--space-md);
+  }
+
+  .tile {
+    min-height: 100px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .content {
+    padding: var(--space-lg) var(--space-xl);
+  }
+
+  .tileGrid {
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--space-md);
+  }
 }
