@@ -149,6 +149,35 @@
   height: 16px;
 }
 
+.tagSuggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-xs);
+}
+
+.tagSuggestion {
+  font-size: 0.6875rem;
+  padding: 3px 10px;
+  border-radius: var(--radius-full);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: all var(--transition-fast);
+}
+
+.tagSuggestion:hover {
+  background: var(--color-kitchen);
+  color: var(--color-text-inverse);
+  border-color: var(--color-kitchen);
+}
+
+.addButtons {
+  display: flex;
+  gap: var(--space-sm);
+}
+
 .actions {
   display: flex;
   align-items: center;

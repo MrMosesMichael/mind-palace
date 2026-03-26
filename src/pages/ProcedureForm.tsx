@@ -30,6 +30,16 @@ const SUPPLY_CATEGORY_OPTIONS = [
   { value: 'ingredient', label: 'Ingredient' },
 ];
 
+const KITCHEN_SUPPLY_CATEGORY_OPTIONS = [
+  { value: 'ingredient', label: 'Ingredient' },
+  { value: 'tool', label: 'Equipment' },
+  { value: 'consumable', label: 'Consumable' },
+];
+
+const DIETARY_TAG_SUGGESTIONS = [
+  'vegetarian', 'vegan', 'gluten-free', 'dairy-free', 'keto', 'paleo', 'nut-free',
+];
+
 interface StepDraft {
   id?: number;
   instruction: string;
@@ -48,6 +58,7 @@ interface SupplyDraft {
   supplierUrl: string;
   price: string;
   quantity: string;
+  unit: string;
   notes: string;
   isRequired: boolean;
 }
@@ -65,6 +76,8 @@ export function ProcedureForm() {
   const { addStep, updateStep, deleteStep } = useProcedureSteps(pid ? Number(pid) : undefined);
   const { addSupply, updateSupply, deleteSupply } = useSupplies(pid ? Number(pid) : undefined);
   const navigate = useNavigate();
+
+  const isKitchen = room?.moduleType === 'kitchen';
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -113,6 +126,7 @@ export function ProcedureForm() {
           supplierUrl: s.supplierUrl ?? '',
           price: s.price?.toString() ?? '',
           quantity: s.quantity?.toString() ?? '1',
+          unit: s.unit ?? '',
           notes: s.notes ?? '',
           isRequired: s.isRequired,
         }))
@@ -150,11 +164,11 @@ export function ProcedureForm() {
   }
 
   // Supply management
-  function addSupplyDraft() {
+  function addSupplyDraft(category?: string) {
     setSupplyDrafts((prev) => [
       ...prev,
       {
-        category: 'tool',
+        category: category ?? (isKitchen ? 'ingredient' : 'tool'),
         name: '',
         identifier: '',
         manufacturer: '',
@@ -162,6 +176,7 @@ export function ProcedureForm() {
         supplierUrl: '',
         price: '',
         quantity: '1',
+        unit: '',
         notes: '',
         isRequired: true,
       },
@@ -176,6 +191,13 @@ export function ProcedureForm() {
 
   function removeSupplyDraft(index: number) {
     setSupplyDrafts((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function addDietaryTag(tag: string) {
+    const current = tagsStr.split(',').map((t) => t.trim().toLowerCase()).filter(Boolean);
+    if (!current.includes(tag)) {
+      setTagsStr(current.length > 0 ? `${tagsStr}, ${tag}` : tag);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -258,6 +280,7 @@ export function ProcedureForm() {
         supplierUrl: draft.supplierUrl || undefined,
         price: draft.price ? Number(draft.price) : undefined,
         quantity: draft.quantity ? Number(draft.quantity) : 1,
+        unit: draft.unit || undefined,
         notes: draft.notes || undefined,
         isRequired: draft.isRequired,
       };
@@ -280,66 +303,220 @@ export function ProcedureForm() {
   }
 
   const specFields = mod?.specFields ?? [];
+  const supplyCategories = isKitchen ? KITCHEN_SUPPLY_CATEGORY_OPTIONS : SUPPLY_CATEGORY_OPTIONS;
 
   return (
     <div>
       <PageHeader
-        title={isEditing ? 'Edit Procedure' : lore.procedures.newProcedure}
+        title={isEditing
+          ? (isKitchen ? 'Edit Recipe' : 'Edit Procedure')
+          : (isKitchen ? lore.recipes.newRecipe : lore.procedures.newProcedure)}
         subtitle={room?.name}
         showBack
       />
 
       <form className={styles.form} onSubmit={handleSubmit}>
         {/* Basic info */}
-        <Input
-          label="Title"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          placeholder="Oil Change - Full Synthetic"
-          required
-        />
-
-        <Input
-          label="Description"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          placeholder="Overview of what this procedure covers"
-        />
-
-        <div className={styles.row}>
+        <fieldset className={styles.fieldset}>
+          <legend className={styles.legend}>
+            {isKitchen ? 'Recipe Details' : 'Procedure Details'}
+          </legend>
           <Input
-            label="Estimated Time"
-            value={estimatedTime}
-            onChange={(e) => setEstimatedTime(e.target.value)}
-            placeholder="45 minutes"
+            label={isKitchen ? 'Recipe Name' : 'Title'}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder={isKitchen ? 'Grandma\'s Famous Chili' : 'Oil Change - Full Synthetic'}
+            required
           />
-          <Select
-            label="Difficulty"
-            value={difficulty}
-            onChange={(e) => setDifficulty(e.target.value)}
-            options={DIFFICULTY_OPTIONS}
-          />
-        </div>
 
-        <Input
-          label="Tags (comma separated)"
-          value={tagsStr}
-          onChange={(e) => setTagsStr(e.target.value)}
-          placeholder="oil-change, maintenance, engine"
-        />
+          <Input
+            label="Description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder={isKitchen ? 'A brief description of this recipe' : 'Overview of what this procedure covers'}
+          />
+
+          <div className={styles.row}>
+            <Input
+              label={isKitchen ? 'Total Time' : 'Estimated Time'}
+              value={estimatedTime}
+              onChange={(e) => setEstimatedTime(e.target.value)}
+              placeholder={isKitchen ? '1 hour 30 min' : '45 minutes'}
+            />
+            <Select
+              label="Difficulty"
+              value={difficulty}
+              onChange={(e) => setDifficulty(e.target.value)}
+              options={DIFFICULTY_OPTIONS}
+            />
+          </div>
+
+          <Input
+            label={isKitchen ? 'Tags (dietary, cuisine, etc.)' : 'Tags (comma separated)'}
+            value={tagsStr}
+            onChange={(e) => setTagsStr(e.target.value)}
+            placeholder={isKitchen ? 'vegetarian, italian, comfort-food' : 'oil-change, maintenance, engine'}
+          />
+
+          {/* Dietary tag suggestions for kitchen */}
+          {isKitchen && (
+            <div className={styles.tagSuggestions}>
+              {DIETARY_TAG_SUGGESTIONS.map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  className={styles.tagSuggestion}
+                  onClick={() => addDietaryTag(tag)}
+                >
+                  + {tag}
+                </button>
+              ))}
+            </div>
+          )}
+        </fieldset>
+
+        {/* Supplies (ingredients for kitchen, tools/parts otherwise) */}
+        <fieldset className={styles.fieldset}>
+          <legend className={styles.legend}>
+            {isKitchen ? lore.recipes.ingredients + ' & Equipment' : lore.procedures.supplies}
+          </legend>
+
+          {supplyDrafts.map((supply, index) => (
+            <div key={index} className={styles.supplyEditor}>
+              <div className={styles.supplyHeader}>
+                <Select
+                  value={supply.category}
+                  onChange={(e) => updateSupplyDraft(index, { category: e.target.value })}
+                  options={supplyCategories}
+                />
+                <button type="button" className={styles.iconBtn} onClick={() => removeSupplyDraft(index)}>{'\u2715'}</button>
+              </div>
+
+              <div className={styles.row}>
+                <Input
+                  label="Name"
+                  value={supply.name}
+                  onChange={(e) => updateSupplyDraft(index, { name: e.target.value })}
+                  placeholder={
+                    supply.category === 'ingredient' ? 'All-purpose flour' :
+                    supply.category === 'tool' ? (isKitchen ? 'Mixing bowl' : '14mm socket') :
+                    'Oil Filter'
+                  }
+                  required
+                />
+                {supply.category === 'ingredient' ? (
+                  <Input
+                    label="Unit"
+                    value={supply.unit}
+                    onChange={(e) => updateSupplyDraft(index, { unit: e.target.value })}
+                    placeholder="cups, tbsp, oz"
+                  />
+                ) : (
+                  <Input
+                    label={supply.category === 'tool' ? 'Size / Spec' : 'Part Number'}
+                    value={supply.identifier}
+                    onChange={(e) => updateSupplyDraft(index, { identifier: e.target.value })}
+                    placeholder={supply.category === 'tool' ? (isKitchen ? 'Large' : '14mm deep') : '90915-YZZD1'}
+                  />
+                )}
+              </div>
+
+              <div className={styles.row}>
+                <Input
+                  label="Quantity"
+                  type="number"
+                  step="0.25"
+                  value={supply.quantity}
+                  onChange={(e) => updateSupplyDraft(index, { quantity: e.target.value })}
+                />
+                {supply.category !== 'tool' && supply.category !== 'ingredient' && (
+                  <Input
+                    label="Price ($)"
+                    type="number"
+                    step="0.01"
+                    value={supply.price}
+                    onChange={(e) => updateSupplyDraft(index, { price: e.target.value })}
+                  />
+                )}
+              </div>
+
+              {supply.category !== 'tool' && supply.category !== 'ingredient' && (
+                <>
+                  <div className={styles.row}>
+                    <Input
+                      label="Manufacturer"
+                      value={supply.manufacturer}
+                      onChange={(e) => updateSupplyDraft(index, { manufacturer: e.target.value })}
+                      placeholder="Toyota OEM"
+                    />
+                    <Input
+                      label="Supplier"
+                      value={supply.supplier}
+                      onChange={(e) => updateSupplyDraft(index, { supplier: e.target.value })}
+                      placeholder="RockAuto"
+                    />
+                  </div>
+                  <Input
+                    label="Order Link"
+                    value={supply.supplierUrl}
+                    onChange={(e) => updateSupplyDraft(index, { supplierUrl: e.target.value })}
+                    placeholder="https://..."
+                  />
+                </>
+              )}
+
+              <Input
+                label="Notes"
+                value={supply.notes}
+                onChange={(e) => updateSupplyDraft(index, { notes: e.target.value })}
+                placeholder={supply.category === 'ingredient' ? 'Sifted, room temperature, etc.' : 'Deep socket needed, etc.'}
+              />
+
+              <label className={styles.toggle}>
+                <input
+                  type="checkbox"
+                  checked={supply.isRequired}
+                  onChange={(e) => updateSupplyDraft(index, { isRequired: e.target.checked })}
+                />
+                <span>Required</span>
+              </label>
+            </div>
+          ))}
+
+          <div className={styles.addButtons}>
+            {isKitchen ? (
+              <>
+                <Button type="button" variant="secondary" size="sm" onClick={() => addSupplyDraft('ingredient')}>
+                  + Ingredient
+                </Button>
+                <Button type="button" variant="secondary" size="sm" onClick={() => addSupplyDraft('tool')}>
+                  + Equipment
+                </Button>
+              </>
+            ) : (
+              <Button type="button" variant="secondary" size="sm" onClick={() => addSupplyDraft()}>
+                + Add Tool / Part
+              </Button>
+            )}
+          </div>
+        </fieldset>
 
         {/* Steps */}
         <fieldset className={styles.fieldset}>
-          <legend className={styles.legend}>{lore.procedures.steps}</legend>
+          <legend className={styles.legend}>
+            {isKitchen ? lore.recipes.steps : lore.procedures.steps}
+          </legend>
 
           {stepDrafts.map((step, index) => (
             <div key={index} className={styles.stepEditor}>
               <div className={styles.stepHeader}>
-                <span className={styles.stepNumber}>Step {index + 1}</span>
+                <span className={styles.stepNumber}>
+                  {isKitchen ? `Step ${index + 1}` : `Step ${index + 1}`}
+                </span>
                 <div className={styles.stepActions}>
-                  <button type="button" className={styles.iconBtn} onClick={() => moveStep(index, -1)} disabled={index === 0}>↑</button>
-                  <button type="button" className={styles.iconBtn} onClick={() => moveStep(index, 1)} disabled={index === stepDrafts.length - 1}>↓</button>
-                  <button type="button" className={styles.iconBtn} onClick={() => removeStepDraft(index)}>✕</button>
+                  <button type="button" className={styles.iconBtn} onClick={() => moveStep(index, -1)} disabled={index === 0}>{'\u2191'}</button>
+                  <button type="button" className={styles.iconBtn} onClick={() => moveStep(index, 1)} disabled={index === stepDrafts.length - 1}>{'\u2193'}</button>
+                  <button type="button" className={styles.iconBtn} onClick={() => removeStepDraft(index)}>{'\u2715'}</button>
                 </div>
               </div>
 
@@ -347,11 +524,11 @@ export function ProcedureForm() {
                 className={styles.textarea}
                 value={step.instruction}
                 onChange={(e) => updateStepDraft(index, { instruction: e.target.value })}
-                placeholder="Describe this step..."
+                placeholder={isKitchen ? 'Describe this cooking step...' : 'Describe this step...'}
                 rows={3}
               />
 
-              {/* Spec fields (torque, etc.) */}
+              {/* Spec fields (torque, temperature, cook time) */}
               {specFields.length > 0 && (
                 <div className={styles.specRow}>
                   {specFields.map((field) => (
@@ -375,13 +552,13 @@ export function ProcedureForm() {
                   label="Warning"
                   value={step.warning}
                   onChange={(e) => updateStepDraft(index, { warning: e.target.value })}
-                  placeholder="Safety warning..."
+                  placeholder={isKitchen ? 'Hot surface, etc.' : 'Safety warning...'}
                 />
                 <Input
                   label="Tip"
                   value={step.tip}
                   onChange={(e) => updateStepDraft(index, { tip: e.target.value })}
-                  placeholder="Pro tip..."
+                  placeholder={isKitchen ? 'Chef\'s tip...' : 'Pro tip...'}
                 />
               </div>
             </div>
@@ -389,100 +566,6 @@ export function ProcedureForm() {
 
           <Button type="button" variant="secondary" size="sm" onClick={addStepDraft}>
             + Add Step
-          </Button>
-        </fieldset>
-
-        {/* Supplies (tools + parts) */}
-        <fieldset className={styles.fieldset}>
-          <legend className={styles.legend}>{lore.procedures.supplies}</legend>
-
-          {supplyDrafts.map((supply, index) => (
-            <div key={index} className={styles.supplyEditor}>
-              <div className={styles.supplyHeader}>
-                <Select
-                  value={supply.category}
-                  onChange={(e) => updateSupplyDraft(index, { category: e.target.value })}
-                  options={SUPPLY_CATEGORY_OPTIONS}
-                />
-                <button type="button" className={styles.iconBtn} onClick={() => removeSupplyDraft(index)}>✕</button>
-              </div>
-
-              <div className={styles.row}>
-                <Input
-                  label="Name"
-                  value={supply.name}
-                  onChange={(e) => updateSupplyDraft(index, { name: e.target.value })}
-                  placeholder={supply.category === 'tool' ? '14mm socket' : 'Oil Filter'}
-                  required
-                />
-                <Input
-                  label={supply.category === 'tool' ? 'Size / Spec' : 'Part Number'}
-                  value={supply.identifier}
-                  onChange={(e) => updateSupplyDraft(index, { identifier: e.target.value })}
-                  placeholder={supply.category === 'tool' ? '14mm deep' : '90915-YZZD1'}
-                />
-              </div>
-
-              {supply.category !== 'tool' && (
-                <>
-                  <div className={styles.row}>
-                    <Input
-                      label="Manufacturer"
-                      value={supply.manufacturer}
-                      onChange={(e) => updateSupplyDraft(index, { manufacturer: e.target.value })}
-                      placeholder="Toyota OEM"
-                    />
-                    <Input
-                      label="Supplier"
-                      value={supply.supplier}
-                      onChange={(e) => updateSupplyDraft(index, { supplier: e.target.value })}
-                      placeholder="RockAuto"
-                    />
-                  </div>
-                  <Input
-                    label="Order Link"
-                    value={supply.supplierUrl}
-                    onChange={(e) => updateSupplyDraft(index, { supplierUrl: e.target.value })}
-                    placeholder="https://..."
-                  />
-                  <div className={styles.row}>
-                    <Input
-                      label="Price ($)"
-                      type="number"
-                      step="0.01"
-                      value={supply.price}
-                      onChange={(e) => updateSupplyDraft(index, { price: e.target.value })}
-                    />
-                    <Input
-                      label="Quantity"
-                      type="number"
-                      value={supply.quantity}
-                      onChange={(e) => updateSupplyDraft(index, { quantity: e.target.value })}
-                    />
-                  </div>
-                </>
-              )}
-
-              <Input
-                label="Notes"
-                value={supply.notes}
-                onChange={(e) => updateSupplyDraft(index, { notes: e.target.value })}
-                placeholder="Deep socket needed, etc."
-              />
-
-              <label className={styles.toggle}>
-                <input
-                  type="checkbox"
-                  checked={supply.isRequired}
-                  onChange={(e) => updateSupplyDraft(index, { isRequired: e.target.checked })}
-                />
-                <span>Required</span>
-              </label>
-            </div>
-          ))}
-
-          <Button type="button" variant="secondary" size="sm" onClick={addSupplyDraft}>
-            + Add Tool / Part
           </Button>
         </fieldset>
 
@@ -498,7 +581,7 @@ export function ProcedureForm() {
             Cancel
           </Button>
           <Button type="submit">
-            {isEditing ? 'Save' : 'Create Procedure'}
+            {isEditing ? 'Save' : (isKitchen ? 'Create Recipe' : 'Create Procedure')}
           </Button>
         </div>
       </form>
