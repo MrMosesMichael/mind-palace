@@ -10,6 +10,8 @@ import authRoutes from './routes/auth.js';
 import userRoutes from './routes/users.js';
 import syncRoutes from './routes/sync.js';
 import photoRoutes from './routes/photos.js';
+import backupRoutes from './routes/backup.js';
+import { backupDatabase } from './services/backup.js';
 
 // Catch silent crashes
 process.on('uncaughtException', (err) => {
@@ -31,6 +33,9 @@ try {
   console.error('Database initialization failed:', err);
   process.exit(1);
 }
+
+// Back up existing data on every startup (before any potential issues)
+backupDatabase().catch(err => console.error('Startup backup failed:', err));
 
 // Middleware
 app.use(helmet({
@@ -58,6 +63,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/sync', syncRoutes);
 app.use('/api/photos', photoRoutes);
+app.use('/api/backup', backupRoutes);
 
 // Serve PWA static files (built frontend)
 // In production, the built PWA files are copied into dist/public
@@ -95,6 +101,26 @@ server.on('error', (err) => {
   console.error('Server error:', err);
   process.exit(1);
 });
+
+// Graceful shutdown — close HTTP server, then SQLite connection
+function shutdown(signal: string) {
+  console.log(`${signal} received — shutting down gracefully`);
+  server.close(() => {
+    console.log('HTTP server closed');
+    db.pragma('wal_checkpoint(TRUNCATE)');
+    db.close();
+    console.log('Database closed');
+    process.exit(0);
+  });
+  // Force exit if graceful shutdown takes too long
+  setTimeout(() => {
+    console.error('Graceful shutdown timed out — forcing exit');
+    process.exit(1);
+  }, 5000);
+}
+
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
 
 function seedAdminUser() {
   const existingAdmin = db.prepare("SELECT id FROM users WHERE role = 'admin' LIMIT 1").get();

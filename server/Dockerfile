@@ -33,7 +33,7 @@ COPY --from=server-builder /app/dist ./dist
 COPY --from=frontend-builder /app/dist ./dist/public
 
 # Create data directories
-RUN mkdir -p /data/db /data/photos
+RUN mkdir -p /data/db /data/photos /data/backups
 
 # Non-root user
 RUN addgroup -g 1001 -S nodejs && \

@@ -4,6 +4,9 @@ import { apiFetch, isAuthenticated } from './apiClient';
 type SyncStatus = 'idle' | 'syncing' | 'error' | 'offline';
 
 let syncStatus: SyncStatus = 'idle';
+let pullInProgress = false;
+
+export function isPullInProgress(): boolean { return pullInProgress; }
 let lastSyncAt: string | null = null;
 const syncListeners: Set<(status: SyncStatus) => void> = new Set();
 
@@ -125,6 +128,7 @@ export async function pullSync(): Promise<void> {
   }
 
   setSyncStatus('syncing');
+  pullInProgress = true;
 
   try {
     const res = await apiFetch('/api/sync');
@@ -162,6 +166,8 @@ export async function pullSync(): Promise<void> {
   } catch (err) {
     console.error('Pull sync failed:', err);
     setSyncStatus('error');
+  } finally {
+    pullInProgress = false;
   }
 }
 

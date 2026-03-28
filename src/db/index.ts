@@ -1,5 +1,5 @@
 import { MindPalaceDB } from './schema';
-import { trackChange } from '../services/syncService';
+import { trackChange, isPullInProgress } from '../services/syncService';
 
 export const db = new MindPalaceDB();
 
@@ -20,12 +20,13 @@ const TABLE_SYNC_MAP: Record<string, string> = {
 };
 
 // Wire up Dexie CRUD hooks for automatic sync tracking
+// Hooks are suppressed during pullSync to avoid pushing server data back redundantly
 for (const [tableName, syncName] of Object.entries(TABLE_SYNC_MAP)) {
   const table = (db as any)[tableName];
   if (!table) continue;
 
   table.hook('creating', function (_primKey: any, obj: any) {
-    // After creation, track the upsert (will fire in debouncedSync)
+    if (isPullInProgress()) return;
     setTimeout(() => {
       if (obj.id !== undefined) {
         trackChange(syncName, 'upsert', obj);
@@ -34,12 +35,14 @@ for (const [tableName, syncName] of Object.entries(TABLE_SYNC_MAP)) {
   });
 
   table.hook('updating', function (mods: any, _primKey: any, obj: any) {
+    if (isPullInProgress()) return;
     setTimeout(() => {
       trackChange(syncName, 'upsert', { ...obj, ...mods });
     }, 0);
   });
 
   table.hook('deleting', function (primKey: any) {
+    if (isPullInProgress()) return;
     trackChange(syncName, 'delete', primKey);
   });
 }
