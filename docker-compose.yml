@@ -18,7 +18,7 @@ services:
       ADMIN_USERNAME: ${ADMIN_USERNAME:-moses}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
     volumes:
-      - mind-palace-data:/data
+      - ./data:/data
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:3001/health"]
       interval: 30s
@@ -77,7 +77,5 @@ networks:
     external: true
 
 volumes:
-  mind-palace-data:
-    driver: local
   radicale-data:
     driver: local
