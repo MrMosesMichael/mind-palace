@@ -27,6 +27,22 @@
   justify-content: space-between;
 }
 
+.headerRight {
+  display: flex;
+  align-items: center;
+  gap: var(--space-xs);
+}
+
+.roomBadge {
+  font-size: 0.5625rem;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--color-primary-bg);
+  color: var(--color-primary-muted);
+  white-space: nowrap;
+}
+
 .icon {
   font-size: 1.5rem;
 }

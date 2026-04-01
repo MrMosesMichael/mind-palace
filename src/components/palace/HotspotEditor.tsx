@@ -1,7 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import type { Room } from '../../types';
 import { useRoomHotspots } from '../../hooks/useRoomHotspots';
+import { useRooms } from '../../hooks/useRooms';
+import { getAllModules } from '../../modules';
 import { Button } from '../ui/Button';
+import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 import styles from './HotspotEditor.module.css';
 
@@ -27,6 +30,8 @@ type ResizeHandle = 'nw' | 'ne' | 'sw' | 'se';
 
 export function HotspotEditor({ palaceId, artworkUrl, rooms, onDone }: HotspotEditorProps) {
   const { hotspots, addHotspot, deleteHotspot } = useRoomHotspots(palaceId);
+  const { addRoom } = useRooms();
+  const modules = getAllModules();
   const containerRef = useRef<HTMLDivElement>(null);
 
   const [drafts, setDrafts] = useState<HotspotDraft[]>([]);
@@ -35,6 +40,11 @@ export function HotspotEditor({ palaceId, artworkUrl, rooms, onDone }: HotspotEd
   const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
   const [resizeHandle, setResizeHandle] = useState<ResizeHandle | null>(null);
   const [dragOriginal, setDragOriginal] = useState<HotspotDraft | null>(null);
+
+  // Inline room creation state
+  const [creatingRoom, setCreatingRoom] = useState(false);
+  const [newRoomName, setNewRoomName] = useState('');
+  const [newRoomModuleType, setNewRoomModuleType] = useState(modules[0]?.type ?? '');
 
   // Initialize drafts from existing hotspots
   useEffect(() => {
@@ -187,6 +197,12 @@ export function HotspotEditor({ palaceId, artworkUrl, rooms, onDone }: HotspotEd
   }
 
   function handleRoomChange(index: number, roomIdStr: string) {
+    if (roomIdStr === '__create_new__') {
+      setCreatingRoom(true);
+      setNewRoomName('');
+      setNewRoomModuleType(modules[0]?.type ?? '');
+      return;
+    }
     const roomId = Number(roomIdStr);
     const room = rooms.find((r) => r.id === roomId);
     setDrafts((prev) =>
@@ -194,6 +210,24 @@ export function HotspotEditor({ palaceId, artworkUrl, rooms, onDone }: HotspotEd
         i === index ? { ...d, roomId, label: room?.name } : d
       )
     );
+    setCreatingRoom(false);
+  }
+
+  async function handleCreateAndAssign() {
+    if (!newRoomName.trim() || selectedIndex === null) return;
+    const newId = await addRoom({
+      palaceId,
+      moduleType: newRoomModuleType,
+      name: newRoomName.trim(),
+      metadata: {},
+    });
+    setDrafts((prev) =>
+      prev.map((d, i) =>
+        i === selectedIndex ? { ...d, roomId: newId, label: newRoomName.trim() } : d
+      )
+    );
+    setCreatingRoom(false);
+    setNewRoomName('');
   }
 
   function handleDeleteDraft(index: number) {
@@ -290,8 +324,28 @@ export function HotspotEditor({ palaceId, artworkUrl, rooms, onDone }: HotspotEd
             options={[
               { value: '', label: 'Select a room...' },
               ...roomOptions,
+              { value: '__create_new__', label: '+ Create New Room' },
             ]}
           />
+          {creatingRoom && (
+            <div className={styles.inlineCreate}>
+              <Input
+                label="Room Name"
+                value={newRoomName}
+                onChange={(e) => setNewRoomName(e.target.value)}
+                placeholder="e.g. Main Kitchen"
+              />
+              <Select
+                label="Type"
+                value={newRoomModuleType}
+                onChange={(e) => setNewRoomModuleType(e.target.value)}
+                options={modules.map((m) => ({ value: m.type, label: m.label }))}
+              />
+              <Button size="sm" onClick={handleCreateAndAssign} disabled={!newRoomName.trim()}>
+                Create & Assign
+              </Button>
+            </div>
+          )}
           <Button
             size="sm"
             variant="danger"

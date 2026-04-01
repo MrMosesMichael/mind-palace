@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { useRooms, useRoom } from '../hooks/useRooms';
+import { usePalace } from '../hooks/usePalaces';
 import { getAllModules, getModule, getModuleIcon } from '../modules';
 import { lore } from '../lib/lore';
 import type { ModuleDefinition } from '../types/modules';
@@ -15,6 +16,7 @@ export function RoomForm() {
   const isEditing = !!id;
   const existingRoom = useRoom(id ? Number(id) : undefined);
   const { addRoom, updateRoom } = useRooms();
+  const { palace } = usePalace(palaceId ? Number(palaceId) : undefined);
   const navigate = useNavigate();
   const modules = getAllModules();
 
@@ -78,7 +80,7 @@ export function RoomForm() {
   return (
     <div>
       <PageHeader
-        title={isEditing ? `Edit ${selectedModule?.roomLabel ?? 'Room'}` : lore.rooms.newRoom}
+        title={isEditing ? `Edit ${selectedModule?.roomLabel ?? 'Room'}` : `Open a new room in ${palace?.name ?? 'the warehouse'}`}
         showBack
       />
 
@@ -109,7 +111,7 @@ export function RoomForm() {
           value={name}
           onChange={(e) => setName(e.target.value)}
           placeholder={
-            selectedModule?.type === 'garage' ? 'My Tacoma' :
+            selectedModule?.type === 'garage' ? 'Main Garage' :
             selectedModule?.type === 'kitchen' ? 'Main Kitchen' :
             selectedModule?.type === 'yard' ? 'Front Lawn' :
             selectedModule?.type === 'bathroom' ? 'Master Bathroom' :

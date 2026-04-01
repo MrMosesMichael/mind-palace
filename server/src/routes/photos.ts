@@ -38,7 +38,7 @@ const upload = multer({
 });
 
 // POST /api/photos/upload — Upload a photo
-router.post('/upload', upload.single('photo'), (req: Request, res: Response) => {
+router.post('/upload', upload.single('file'), (req: Request, res: Response) => {
   if (!req.file) {
     res.status(400).json({ error: 'No file uploaded' });
     return;

@@ -39,6 +39,48 @@ export function useProcedures(roomId: number | undefined) {
   };
 }
 
+/**
+ * Fetches procedures for multiple room IDs (e.g. all kitchen rooms in a palace).
+ * Makes parallel requests and merges results.
+ */
+export function useMultiRoomProcedures(roomIds: number[]) {
+  const queryClient = useQueryClient();
+  const sortedIds = [...roomIds].sort((a, b) => a - b);
+
+  const { data: procedures = [] } = useQuery({
+    queryKey: ['procedures', { roomIds: sortedIds }],
+    queryFn: async () => {
+      const results = await Promise.all(
+        sortedIds.map((rid) => apiGet<Procedure[]>(`/api/crud/procedures?roomId=${rid}`))
+      );
+      return results.flat();
+    },
+    enabled: sortedIds.length > 0,
+  });
+
+  async function addProcedure(
+    procedure: Omit<Procedure, 'id' | 'createdAt' | 'updatedAt'>
+  ): Promise<number> {
+    const { id } = await apiPost<{ id: number }>('/api/crud/procedures', procedure);
+    queryClient.invalidateQueries({ queryKey: ['procedures'] });
+    return id;
+  }
+
+  async function updateProcedure(id: number, changes: Partial<Procedure>) {
+    await apiPut(`/api/crud/procedures/${id}`, changes);
+    queryClient.invalidateQueries({ queryKey: ['procedures'] });
+  }
+
+  async function deleteProcedure(id: number) {
+    await apiDelete(`/api/crud/procedures/${id}`);
+    queryClient.invalidateQueries({ queryKey: ['procedures'] });
+    queryClient.invalidateQueries({ queryKey: ['procedureSteps'] });
+    queryClient.invalidateQueries({ queryKey: ['supplies'] });
+  }
+
+  return { procedures, addProcedure, updateProcedure, deleteProcedure };
+}
+
 export function useProcedure(id: number | undefined) {
   const { data: procedure } = useQuery({
     queryKey: ['procedures', id],

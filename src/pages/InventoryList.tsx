@@ -30,12 +30,13 @@ export function InventoryList() {
   const room = useRoom(roomId);
   const mod = room ? getModule(room.moduleType) : undefined;
   const isKitchen = room?.moduleType === 'kitchen';
-  const { items, addItem, deleteItem } = useInventory(roomId);
+  const { items, addItem, updateItem, deleteItem } = useInventory(roomId);
   const navigate = useNavigate();
 
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [quickName, setQuickName] = useState('');
   const [quickQuantity, setQuickQuantity] = useState('1');
+  const [quickUnit, setQuickUnit] = useState('');
   const [quickCategory, setQuickCategory] = useState(
     isKitchen ? 'ingredient' : (mod?.supplyCategories?.[0] ?? 'tool')
   );
@@ -85,10 +86,12 @@ export function InventoryList() {
       name: quickName.trim(),
       category: quickCategory,
       quantity: Number(quickQuantity) || 1,
+      unit: quickUnit || undefined,
       lastChecked: new Date().toISOString().split('T')[0],
     });
     setQuickName('');
     setQuickQuantity('1');
+    setQuickUnit('');
   }
 
   async function handleDelete(itemId: number) {
@@ -137,6 +140,12 @@ export function InventoryList() {
                 step="0.25"
                 value={quickQuantity}
                 onChange={(e) => setQuickQuantity(e.target.value)}
+              />
+              <Input
+                label="Unit"
+                value={quickUnit}
+                onChange={(e) => setQuickUnit(e.target.value)}
+                placeholder="oz, lbs..."
               />
               <Select
                 label="Category"
@@ -201,6 +210,23 @@ export function InventoryList() {
                         {item.minQuantity != null && item.quantity <= item.minQuantity && (
                           <span className={styles.lowStockBadge}>Low stock</span>
                         )}
+                      </div>
+                      <div className={styles.quantityAdjust}>
+                        <button
+                          className={styles.qtyBtn}
+                          onClick={() => updateItem(item.id!, { quantity: Math.max(0, item.quantity - 1) })}
+                        >
+                          -
+                        </button>
+                        <span className={styles.qtyValue}>
+                          {item.quantity}{item.unit ? ` ${item.unit}` : ''}
+                        </span>
+                        <button
+                          className={styles.qtyBtn}
+                          onClick={() => updateItem(item.id!, { quantity: item.quantity + 1 })}
+                        >
+                          +
+                        </button>
                       </div>
                       <div className={styles.itemActions}>
                         <button

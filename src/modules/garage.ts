@@ -4,8 +4,8 @@ export const garageModule: ModuleDefinition = {
   type: 'garage',
   label: 'Garage',
   icon: 'wrench',
-  roomLabel: 'Vehicle',
-  roomPluralLabel: 'Vehicles',
+  roomLabel: 'Garage',
+  roomPluralLabel: 'Garages',
   roomFields: [
     { key: 'make', label: 'Make', type: 'text', required: true, placeholder: 'Toyota' },
     { key: 'model', label: 'Model', type: 'text', required: true, placeholder: 'Tacoma' },

@@ -5,7 +5,7 @@ import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { useInventory, useInventoryItem } from '../hooks/useInventory';
-import { useRoom } from '../hooks/useRooms';
+import { useRoom, usePalaceRooms } from '../hooks/useRooms';
 import { getModule } from '../modules';
 import { lore } from '../lib/lore';
 import styles from './InventoryForm.module.css';
@@ -32,7 +32,16 @@ export function InventoryForm() {
   const isKitchen = room?.moduleType === 'kitchen';
   const { addItem, updateItem, deleteItem } = useInventory(roomId);
   const existingItem = useInventoryItem(iid ? Number(iid) : undefined);
+  const palaceRooms = usePalaceRooms(palaceId ? Number(palaceId) : undefined);
   const navigate = useNavigate();
+
+  // For kitchen rooms, get all kitchen rooms in the palace as location options
+  const kitchenRoomOptions = useMemo(() => {
+    if (!isKitchen) return [];
+    return palaceRooms
+      .filter((r) => r.moduleType === 'kitchen')
+      .map((r) => ({ value: r.name, label: r.name }));
+  }, [isKitchen, palaceRooms]);
 
   const [name, setName] = useState('');
   const [category, setCategory] = useState(isKitchen ? 'ingredient' : 'tool');
@@ -40,6 +49,7 @@ export function InventoryForm() {
   const [unit, setUnit] = useState('');
   const [minQuantity, setMinQuantity] = useState('');
   const [location, setLocation] = useState('');
+  const [useCustomLocation, setUseCustomLocation] = useState(false);
   const [identifier, setIdentifier] = useState('');
   const [supplierUrl, setSupplierUrl] = useState('');
   const [notes, setNotes] = useState('');
@@ -61,13 +71,18 @@ export function InventoryForm() {
       setQuantity(existingItem.quantity?.toString() ?? '1');
       setUnit(existingItem.unit ?? '');
       setMinQuantity(existingItem.minQuantity?.toString() ?? '');
-      setLocation(existingItem.location ?? '');
+      const loc = existingItem.location ?? '';
+      setLocation(loc);
+      // If editing a kitchen item and its location doesn't match any kitchen room, show free-text
+      if (isKitchen && loc && !kitchenRoomOptions.some((o) => o.value === loc)) {
+        setUseCustomLocation(true);
+      }
       setIdentifier(existingItem.identifier ?? '');
       setSupplierUrl(existingItem.supplierUrl ?? '');
       setNotes(existingItem.notes ?? '');
       setLoaded(true);
     }
-  }, [existingItem, isEditing, loaded, isKitchen]);
+  }, [existingItem, isEditing, loaded, isKitchen, kitchenRoomOptions]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -153,12 +168,32 @@ export function InventoryForm() {
           placeholder="Alert when below this"
         />
 
-        <Input
-          label="Location"
-          value={location}
-          onChange={(e) => setLocation(e.target.value)}
-          placeholder={isKitchen ? 'Pantry shelf 2, fridge door...' : 'Shelf A3, toolbox...'}
-        />
+        {isKitchen && kitchenRoomOptions.length > 1 && !useCustomLocation ? (
+          <Select
+            label="Location"
+            value={location}
+            onChange={(e) => {
+              if (e.target.value === '__custom__') {
+                setUseCustomLocation(true);
+                setLocation('');
+              } else {
+                setLocation(e.target.value);
+              }
+            }}
+            options={[
+              { value: '', label: 'Select location...' },
+              ...kitchenRoomOptions,
+              { value: '__custom__', label: 'Other (type manually)' },
+            ]}
+          />
+        ) : (
+          <Input
+            label="Location"
+            value={location}
+            onChange={(e) => setLocation(e.target.value)}
+            placeholder={isKitchen ? 'Pantry shelf 2, fridge door...' : 'Shelf A3, toolbox...'}
+          />
+        )}
 
         <Input
           label={isKitchen ? 'Brand / Variant' : 'Part Number / Identifier'}
