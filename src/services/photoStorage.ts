@@ -149,6 +149,7 @@ export async function savePhoto(
     procedureId?: number;
     logEntryId?: number;
     stepId?: number;
+    noteId?: number;
     caption?: string;
   },
 ): Promise<Photo> {
@@ -176,6 +177,7 @@ export async function savePhoto(
     procedureId: metadata.procedureId,
     logEntryId: metadata.logEntryId,
     stepId: metadata.stepId,
+    noteId: metadata.noteId,
     caption: metadata.caption,
     thumbnailBlob,
     mimeType: file.type || 'image/jpeg',

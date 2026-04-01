@@ -8,12 +8,15 @@ import styles from './RoomCard.module.css';
 
 interface RoomCardProps {
   room: Room;
+  palaceId?: number;
 }
 
-export function RoomCard({ room }: RoomCardProps) {
+export function RoomCard({ room, palaceId }: RoomCardProps) {
   const navigate = useNavigate();
   const mod = getModule(room.moduleType);
   const meta = room.metadata as Record<string, string | number>;
+
+  const effectivePalaceId = palaceId ?? room.palaceId;
 
   const subtitle = mod?.type === 'garage'
     ? [meta.year, meta.make, meta.model].filter(Boolean).join(' ')
@@ -46,10 +49,18 @@ export function RoomCard({ room }: RoomCardProps) {
 
   const icon = mod ? getModuleIcon(mod.icon) : '\uD83D\uDCE6';
 
+  function handleClick() {
+    if (effectivePalaceId) {
+      navigate(`/palace/${effectivePalaceId}/room/${room.id}`);
+    } else {
+      navigate(`/room/${room.id}`);
+    }
+  }
+
   return (
     <button
       className={styles.card}
-      onClick={() => navigate(`/room/${room.id}`)}
+      onClick={handleClick}
       style={{ '--module-color': `var(--color-${room.moduleType}, var(--color-primary))` } as React.CSSProperties}
     >
       <div className={styles.iconBadge}>

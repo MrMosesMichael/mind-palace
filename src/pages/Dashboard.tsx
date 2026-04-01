@@ -56,7 +56,7 @@ function UpcomingWeek() {
       label: string;
       dayNum: number;
       isToday: boolean;
-      tasks: Array<{ name: string; moduleType: string; status: ScheduleStatus; roomId: number; scheduleId: number }>;
+      tasks: Array<{ name: string; moduleType: string; status: ScheduleStatus; roomId: number; scheduleId: number; palaceId?: number }>;
     }> = [];
 
     const now = new Date();
@@ -89,6 +89,7 @@ function UpcomingWeek() {
           status: r.status,
           roomId: r.room.id!,
           scheduleId: r.schedule.id!,
+          palaceId: (r.room as any).palaceId,
         }));
 
       result.push({
@@ -125,7 +126,12 @@ function UpcomingWeek() {
                   className={styles.dayDot}
                   style={{ background: `var(--color-${task.moduleType}, var(--color-primary))` }}
                   title={task.name}
-                  onClick={() => navigate(`/room/${task.roomId}/schedule/${task.scheduleId}`)}
+                  onClick={() => {
+                    const path = task.palaceId
+                      ? `/palace/${task.palaceId}/room/${task.roomId}/schedule/${task.scheduleId}`
+                      : `/room/${task.roomId}/schedule/${task.scheduleId}`;
+                    navigate(path);
+                  }}
                 />
               ))}
               {day.tasks.length > 4 && (
@@ -225,8 +231,8 @@ export function Dashboard() {
       <PageHeader
         title={lore.nav.hallway}
         actions={
-          <Button size="sm" onClick={() => navigate('/room/new')}>
-            + Room
+          <Button size="sm" onClick={() => navigate('/palace/new')}>
+            + Palace
           </Button>
         }
       />
@@ -243,7 +249,7 @@ export function Dashboard() {
           <EmptyState
             message={lore.hallway.emptyState}
             actionLabel={lore.hallway.emptyAction}
-            onAction={() => navigate('/room/new')}
+            onAction={() => navigate('/palace/new')}
           />
         ) : (
           <>
@@ -279,7 +285,12 @@ export function Dashboard() {
                 <div className={styles.reminderList}>
                   {urgentReminders.slice(0, 5).map(({ schedule, room }) => (
                     <div key={schedule.id} className={styles.reminderRow}>
-                      <div className={styles.reminderContent} onClick={() => navigate(`/room/${room.id}/schedule/${schedule.id}`)}>
+                      <div className={styles.reminderContent} onClick={() => {
+                        const path = (room as any).palaceId
+                          ? `/palace/${(room as any).palaceId}/room/${room.id}/schedule/${schedule.id}`
+                          : `/room/${room.id}/schedule/${schedule.id}`;
+                        navigate(path);
+                      }}>
                         <ScheduleCard
                           schedule={schedule}
                           room={room}
@@ -343,7 +354,7 @@ export function Dashboard() {
                         className={styles.roomListItem}
                         style={{ animationDelay: `${i * 50}ms` }}
                       >
-                        <RoomCard room={room} />
+                        <RoomCard room={room} palaceId={room.palaceId} />
                       </div>
                     ))}
                   </div>

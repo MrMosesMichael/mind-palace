@@ -2,8 +2,34 @@ export type { ModuleDefinition, ModuleFieldDefinition, SpecFieldDefinition, Defa
 
 // ─── Core Entities ──────────────────────────────────────────
 
+export interface Palace {
+  id?: number;
+  name: string;
+  description?: string;
+  address?: string;
+  imageId?: string;
+  imageUrl?: string;
+  isDefault: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RoomHotspot {
+  id?: number;
+  palaceId: number;
+  roomId: number;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  label?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Room {
   id?: number;
+  palaceId: number;
   moduleType: string;
   name: string;
   description?: string;
@@ -92,6 +118,7 @@ export interface Supply {
   unit?: string;
   notes?: string;
   isRequired: boolean;
+  photoId?: string;
 }
 
 export interface Inventory {
@@ -129,6 +156,7 @@ export interface Photo {
   procedureId?: number;
   logEntryId?: number;
   stepId?: number;
+  noteId?: number;
   caption?: string;
   thumbnailBlob?: Blob;
   mimeType: string;
@@ -144,6 +172,7 @@ export interface Note {
   title?: string;
   content: string;
   isPinned: boolean;
+  photoIds: string[];
   createdAt: string;
   updatedAt: string;
 }

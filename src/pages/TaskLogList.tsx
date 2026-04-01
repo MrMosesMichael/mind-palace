@@ -10,12 +10,14 @@ import { lore } from '../lib/lore';
 import styles from './TaskLogList.module.css';
 
 export function TaskLogList() {
-  const { id } = useParams();
+  const { id, palaceId } = useParams();
   const roomId = Number(id);
   const room = useRoom(roomId);
   const { logs } = useTaskLogs(roomId);
   const navigate = useNavigate();
   const mod = room ? getModule(room.moduleType) : undefined;
+
+  const basePath = palaceId ? `/palace/${palaceId}/room/${id}` : `/room/${id}`;
 
   return (
     <div>
@@ -24,7 +26,7 @@ export function TaskLogList() {
         subtitle={room?.name}
         showBack
         actions={
-          <Button size="sm" onClick={() => navigate(`/room/${id}/log/new`)}>
+          <Button size="sm" onClick={() => navigate(`${basePath}/log/new`)}>
             + Log
           </Button>
         }
@@ -35,7 +37,7 @@ export function TaskLogList() {
           <EmptyState
             message={lore.taskLog.emptyState}
             actionLabel={lore.taskLog.newEntry}
-            onAction={() => navigate(`/room/${id}/log/new`)}
+            onAction={() => navigate(`${basePath}/log/new`)}
           />
         ) : (
           <div className={styles.list}>
@@ -43,7 +45,7 @@ export function TaskLogList() {
               <button
                 key={log.id}
                 className={styles.card}
-                onClick={() => navigate(`/room/${id}/log/${log.id}`)}
+                onClick={() => navigate(`${basePath}/log/${log.id}`)}
               >
                 <div className={styles.cardHeader}>
                   <span className={styles.title}>{log.title}</span>

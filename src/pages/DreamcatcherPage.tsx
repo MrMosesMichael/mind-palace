@@ -8,6 +8,13 @@ import { downloadICS } from '../services/reminderService';
 import { lore } from '../lib/lore';
 import styles from './DreamcatcherPage.module.css';
 
+function getSchedulePath(room: any, scheduleId: number): string {
+  if (room.palaceId) {
+    return `/palace/${room.palaceId}/room/${room.id}/schedule/${scheduleId}`;
+  }
+  return `/room/${room.id}/schedule/${scheduleId}`;
+}
+
 export function DreamcatcherPage() {
   const reminders = useAllReminders();
   const navigate = useNavigate();
@@ -40,7 +47,7 @@ export function DreamcatcherPage() {
                         schedule={schedule}
                         room={room}
                         showRoom
-                        onClick={() => navigate(`/room/${room.id}/schedule/${schedule.id}`)}
+                        onClick={() => navigate(getSchedulePath(room, schedule.id!))}
                       />
                       <Button
                         size="sm"
@@ -48,7 +55,7 @@ export function DreamcatcherPage() {
                         onClick={() => downloadICS(schedule, room)}
                         title={lore.dreamcatcher.addToApple}
                       >
-                        📅
+                        {'\uD83D\uDCC5'}
                       </Button>
                     </div>
                   ))}
@@ -68,7 +75,7 @@ export function DreamcatcherPage() {
                         schedule={schedule}
                         room={room}
                         showRoom
-                        onClick={() => navigate(`/room/${room.id}/schedule/${schedule.id}`)}
+                        onClick={() => navigate(getSchedulePath(room, schedule.id!))}
                       />
                       <Button
                         size="sm"
@@ -76,7 +83,7 @@ export function DreamcatcherPage() {
                         onClick={() => downloadICS(schedule, room)}
                         title={lore.dreamcatcher.addToApple}
                       >
-                        📅
+                        {'\uD83D\uDCC5'}
                       </Button>
                     </div>
                   ))}
@@ -96,7 +103,7 @@ export function DreamcatcherPage() {
                       schedule={schedule}
                       room={room}
                       showRoom
-                      onClick={() => navigate(`/room/${room.id}/schedule/${schedule.id}`)}
+                      onClick={() => navigate(getSchedulePath(room, schedule.id!))}
                     />
                   ))}
                 </div>

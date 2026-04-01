@@ -1,12 +1,15 @@
+import { useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
+import { PhotoThumbnail } from '../components/photo/PhotoThumbnail';
 import { RecipeDetail } from '../components/recipe/RecipeDetail';
 import { useProcedure, useProcedureSteps, useSupplies } from '../hooks/useProcedures';
 import { useRoom } from '../hooks/useRooms';
 import { getModule } from '../modules';
+import { savePhoto } from '../services/photoStorage';
 import { DIFFICULTY_LABELS } from '../lib/constants';
 import type { Reference } from '../types';
 import { lore } from '../lib/lore';
@@ -14,14 +17,27 @@ import { db } from '../db';
 import styles from './ProcedureDetail.module.css';
 
 export function ProcedureDetail() {
-  const { id, pid } = useParams();
+  const { id, pid, palaceId } = useParams();
   const procedureId = Number(pid);
   const procedure = useProcedure(procedureId);
   const { steps } = useProcedureSteps(procedureId);
   const { tools, parts, supplies } = useSupplies(procedureId);
-  const room = useRoom(id ? Number(id) : undefined);
+  const roomId = id ? Number(id) : undefined;
+  const room = useRoom(roomId);
   const mod = room ? getModule(room.moduleType) : undefined;
   const navigate = useNavigate();
+  const heroPhotoInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleHeroPhotoAdd() {
+    heroPhotoInputRef.current?.click();
+  }
+
+  async function handleHeroPhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files || files.length === 0 || !roomId || !procedureId) return;
+    await savePhoto(files[0], { roomId, procedureId });
+    e.target.value = '';
+  }
 
   // Get references for recipe view
   const references = useLiveQuery(
@@ -40,6 +56,7 @@ export function ProcedureDetail() {
   }
 
   const isKitchen = room?.moduleType === 'kitchen';
+  const basePath = palaceId ? `/palace/${palaceId}/room/${id}` : `/room/${id}`;
 
   // For kitchen, separate ingredients from equipment
   const ingredients = supplies.filter((s) => s.category === 'ingredient');
@@ -55,11 +72,20 @@ export function ProcedureDetail() {
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => navigate(`/room/${id}/procedure/${pid}/edit`)}
+            onClick={() => navigate(`${basePath}/procedure/${pid}/edit`)}
           >
             Edit
           </Button>
         }
+      />
+
+      {/* Hidden file input for hero photo */}
+      <input
+        ref={heroPhotoInputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={handleHeroPhotoChange}
       />
 
       <div className={styles.content}>
@@ -71,6 +97,9 @@ export function ProcedureDetail() {
             equipment={equipment}
             references={references}
             specFields={mod?.specFields ?? []}
+            roomId={roomId}
+            procedureId={procedureId}
+            onAddHeroPhoto={handleHeroPhotoAdd}
           />
         ) : (
           <>
@@ -108,6 +137,7 @@ export function ProcedureDetail() {
                           {tool.identifier && <span className={styles.supplyId}> ({tool.identifier})</span>}
                         </span>
                         {tool.notes && <span className={styles.supplyNotes}>{tool.notes}</span>}
+                        {tool.photoId && <PhotoThumbnail roomId={roomId} specificPhotoIds={[tool.photoId]} maxShow={1} />}
                       </div>
                       {!tool.isRequired && <span className={styles.optional}>optional</span>}
                     </li>
@@ -148,6 +178,7 @@ export function ProcedureDetail() {
                           </a>
                         )}
                         {part.notes && <span className={styles.supplyNotes}>{part.notes}</span>}
+                        {part.photoId && <PhotoThumbnail roomId={roomId} specificPhotoIds={[part.photoId]} maxShow={1} />}
                       </div>
                     </li>
                   ))}
@@ -196,6 +227,9 @@ export function ProcedureDetail() {
                             <span>{step.tip}</span>
                           </div>
                         )}
+
+                        {/* Step photos */}
+                        <PhotoThumbnail stepId={step.id} roomId={roomId} />
                       </div>
                     </li>
                   ))}

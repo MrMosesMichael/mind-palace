@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { PageHeader } from '../components/layout/PageHeader';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
+import { PhotoThumbnail } from '../components/photo/PhotoThumbnail';
 import { useNotes } from '../hooks/useNotes';
 import { useRoom } from '../hooks/useRooms';
+import { savePhoto } from '../services/photoStorage';
 import { formatDate } from '../lib/formatters';
 import { lore } from '../lib/lore';
 import styles from './NotesList.module.css';
@@ -20,11 +22,14 @@ export function NotesList() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [pendingPhotos, setPendingPhotos] = useState<File[]>([]);
+  const photoInputRef = useRef<HTMLInputElement>(null);
 
   function startEdit(note: { id?: number; title?: string; content: string }) {
     setEditingId(note.id ?? null);
     setTitle(note.title ?? '');
     setContent(note.content);
+    setPendingPhotos([]);
     setShowForm(true);
   }
 
@@ -32,25 +37,59 @@ export function NotesList() {
     setEditingId(null);
     setTitle('');
     setContent('');
+    setPendingPhotos([]);
     setShowForm(false);
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (editingId) {
-      await updateNote(editingId, {
-        title: title || undefined,
-        content,
-      });
+      // Editing existing note — save photos immediately
+      if (pendingPhotos.length > 0) {
+        const existingNote = notes.find((n) => n.id === editingId);
+        const existingPhotoIds = existingNote?.photoIds ?? [];
+        const newPhotoIds: string[] = [...existingPhotoIds];
+        for (const file of pendingPhotos) {
+          const photo = await savePhoto(file, { roomId, noteId: editingId });
+          newPhotoIds.push(photo.id);
+        }
+        await updateNote(editingId, {
+          title: title || undefined,
+          content,
+          photoIds: newPhotoIds,
+        });
+      } else {
+        await updateNote(editingId, {
+          title: title || undefined,
+          content,
+        });
+      }
     } else {
-      await addNote({
+      const noteId = await addNote({
         roomId,
         title: title || undefined,
         content,
         isPinned: false,
+        photoIds: [],
       });
+      // Save pending photos for the new note
+      if (pendingPhotos.length > 0) {
+        const photoIds: string[] = [];
+        for (const file of pendingPhotos) {
+          const photo = await savePhoto(file, { roomId, noteId });
+          photoIds.push(photo.id);
+        }
+        await updateNote(noteId, { photoIds });
+      }
     }
     resetForm();
+  }
+
+  function handlePhotoInput(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files) return;
+    setPendingPhotos((prev) => [...prev, ...Array.from(files)]);
+    e.target.value = '';
   }
 
   async function handleDelete(noteId: number) {
@@ -80,6 +119,16 @@ export function NotesList() {
         }
       />
 
+      {/* Hidden file input for photo attachments */}
+      <input
+        ref={photoInputRef}
+        type="file"
+        accept="image/*"
+        multiple
+        style={{ display: 'none' }}
+        onChange={handlePhotoInput}
+      />
+
       <div className={styles.content}>
         {showForm && (
           <form className={styles.form} onSubmit={handleSubmit}>
@@ -100,6 +149,23 @@ export function NotesList() {
                 rows={5}
                 required
               />
+            </div>
+            <div className={styles.photoAttach}>
+              <button
+                type="button"
+                className={styles.attachBtn}
+                onClick={() => photoInputRef.current?.click()}
+              >
+                Attach Photo
+              </button>
+              {pendingPhotos.length > 0 && (
+                <span className={styles.pendingLabel}>
+                  {pendingPhotos.length} photo{pendingPhotos.length > 1 ? 's' : ''} attached
+                </span>
+              )}
+              {editingId && (
+                <PhotoThumbnail noteId={editingId} roomId={roomId} />
+              )}
             </div>
             <Button type="submit" size="sm">
               {editingId ? 'Save' : 'Add Note'}
@@ -143,6 +209,8 @@ export function NotesList() {
               <span className={styles.date}>{formatDate(note.updatedAt)}</span>
             </div>
             <p className={styles.noteContent}>{note.content}</p>
+            {/* Attached photos */}
+            <PhotoThumbnail noteId={note.id} roomId={roomId} />
             <div className={styles.cardActions}>
               <button
                 className={styles.actionBtn}

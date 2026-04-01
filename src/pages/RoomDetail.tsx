@@ -42,7 +42,7 @@ function Tile({ label, icon, description, to, count, badge }: TileProps) {
 }
 
 export function RoomDetail() {
-  const { id } = useParams();
+  const { id, palaceId } = useParams();
   const roomId = id ? Number(id) : undefined;
   const room = useRoom(roomId);
   const { deleteRoom } = useRooms();
@@ -87,6 +87,18 @@ export function RoomDetail() {
     [roomId]
   ) ?? 0;
 
+  const inventoryCounts = useLiveQuery(async () => {
+    if (!roomId) return { total: 0, lowStock: 0 };
+    const items = await db.inventory.where('roomId').equals(roomId).toArray();
+    let lowStock = 0;
+    for (const item of items) {
+      if (item.minQuantity != null && item.quantity <= item.minQuantity) {
+        lowStock++;
+      }
+    }
+    return { total: items.length, lowStock };
+  }, [roomId]);
+
   if (!room) {
     return (
       <div>
@@ -111,11 +123,11 @@ export function RoomDetail() {
   async function handleDelete() {
     if (window.confirm(lore.rooms.deleteConfirm)) {
       await deleteRoom(room!.id!);
-      navigate('/');
+      navigate(palaceId ? `/palace/${palaceId}` : '/');
     }
   }
 
-  const basePath = `/room/${room.id}`;
+  const basePath = palaceId ? `/palace/${palaceId}/room/${room.id}` : `/room/${room.id}`;
 
   // Schedule badge
   const scheduleBadge = scheduleCounts && scheduleCounts.overdue > 0
@@ -195,6 +207,12 @@ export function RoomDetail() {
             icon={'\uD83D\uDD29'}
             description="Parts & supplies on hand"
             to={`${basePath}/inventory`}
+            count={inventoryCounts?.total}
+            badge={
+              inventoryCounts && inventoryCounts.lowStock > 0
+                ? { text: `${inventoryCounts.lowStock} low`, type: 'due-soon' as const }
+                : null
+            }
           />
           <Tile
             label={lore.notes.title}

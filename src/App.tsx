@@ -2,8 +2,12 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AppShell } from './components/layout/AppShell';
+import { PalaceLayout } from './components/layout/PalaceLayout';
+import { RoomRedirect } from './components/RoomRedirect';
 import { Login } from './pages/Login';
-import { Dashboard } from './pages/Dashboard';
+import { PalaceSelector } from './pages/PalaceSelector';
+import { PalaceView } from './pages/PalaceView';
+import { PalaceForm } from './pages/PalaceForm';
 import { RoomForm } from './pages/RoomForm';
 import { RoomDetail } from './pages/RoomDetail';
 import { ScheduleList } from './pages/ScheduleList';
@@ -19,6 +23,8 @@ import { PhotoGallery } from './pages/PhotoGallery';
 import { DreamcatcherPage } from './pages/DreamcatcherPage';
 import { Calendar } from './pages/Calendar';
 import { Settings } from './pages/Settings';
+import { InventoryList } from './pages/InventoryList';
+import { InventoryForm } from './pages/InventoryForm';
 import { StubPage } from './pages/StubPage';
 import { initializeSettings } from './db';
 import { lore } from './lib/lore';
@@ -45,51 +51,61 @@ function AppRoutes() {
   return (
     <Routes>
       <Route element={<AppShell />}>
-        {/* Dashboard */}
-        <Route index element={<Dashboard />} />
+        {/* Palace selector — landing page */}
+        <Route index element={<PalaceSelector />} />
 
-        {/* Room CRUD */}
-        <Route path="room/new" element={<RoomForm />} />
-        <Route path="room/:id" element={<RoomDetail />} />
-        <Route path="room/:id/edit" element={<RoomForm />} />
+        {/* Create new palace */}
+        <Route path="palace/new" element={<PalaceForm />} />
 
-        {/* Schedules */}
-        <Route path="room/:id/schedules" element={<ScheduleList />} />
-        <Route path="room/:id/schedule/new" element={<ScheduleForm />} />
-        <Route path="room/:id/schedule/:sid" element={<ScheduleForm />} />
+        {/* Palace routes — wrapped in PalaceLayout context */}
+        <Route path="palace/:palaceId" element={<PalaceLayout />}>
+          {/* Palace view */}
+          <Route index element={<PalaceView />} />
+          <Route path="edit" element={<PalaceForm />} />
 
-        {/* Task Log */}
-        <Route path="room/:id/log" element={<TaskLogList />} />
-        <Route path="room/:id/log/new" element={<TaskLogForm />} />
-        <Route path="room/:id/log/:lid" element={<TaskLogForm />} />
+          {/* Room CRUD */}
+          <Route path="room/new" element={<RoomForm />} />
+          <Route path="room/:id" element={<RoomDetail />} />
+          <Route path="room/:id/edit" element={<RoomForm />} />
 
-        {/* Procedures */}
-        <Route path="room/:id/procedures" element={<ProcedureList />} />
-        <Route path="room/:id/procedure/new" element={<ProcedureForm />} />
-        <Route path="room/:id/procedure/:pid" element={<ProcedureDetail />} />
-        <Route path="room/:id/procedure/:pid/edit" element={<ProcedureForm />} />
+          {/* Schedules */}
+          <Route path="room/:id/schedules" element={<ScheduleList />} />
+          <Route path="room/:id/schedule/new" element={<ScheduleForm />} />
+          <Route path="room/:id/schedule/:sid" element={<ScheduleForm />} />
 
-        {/* References */}
-        <Route path="room/:id/references" element={<ReferenceList />} />
+          {/* Task Log */}
+          <Route path="room/:id/log" element={<TaskLogList />} />
+          <Route path="room/:id/log/new" element={<TaskLogForm />} />
+          <Route path="room/:id/log/:lid" element={<TaskLogForm />} />
 
-        {/* Notes */}
-        <Route path="room/:id/notes" element={<NotesList />} />
+          {/* Procedures */}
+          <Route path="room/:id/procedures" element={<ProcedureList />} />
+          <Route path="room/:id/procedure/new" element={<ProcedureForm />} />
+          <Route path="room/:id/procedure/:pid" element={<ProcedureDetail />} />
+          <Route path="room/:id/procedure/:pid/edit" element={<ProcedureForm />} />
 
-        {/* Inventory */}
-        <Route path="room/:id/inventory" element={<StubPage title={lore.inventory.title} message={lore.inventory.emptyState} />} />
-        <Route path="room/:id/inventory/new" element={<StubPage title="Add to Shelf" />} />
+          {/* References */}
+          <Route path="room/:id/references" element={<ReferenceList />} />
 
-        {/* Photos */}
-        <Route path="room/:id/photos" element={<PhotoGallery />} />
+          {/* Notes */}
+          <Route path="room/:id/notes" element={<NotesList />} />
 
-        {/* Calendar */}
+          {/* Inventory */}
+          <Route path="room/:id/inventory" element={<InventoryList />} />
+          <Route path="room/:id/inventory/new" element={<InventoryForm />} />
+          <Route path="room/:id/inventory/:iid" element={<InventoryForm />} />
+
+          {/* Photos */}
+          <Route path="room/:id/photos" element={<PhotoGallery />} />
+        </Route>
+
+        {/* Global pages */}
         <Route path="calendar" element={<Calendar />} />
-
-        {/* Dreamcatcher */}
         <Route path="dreamcatcher" element={<DreamcatcherPage />} />
-
-        {/* Settings */}
         <Route path="settings" element={<Settings />} />
+
+        {/* Backward compatibility — old /room/:id routes redirect */}
+        <Route path="room/:id/*" element={<RoomRedirect />} />
 
         {/* 404 */}
         <Route path="*" element={<StubPage title="Lost" message="This room doesn't exist in the warehouse." />} />

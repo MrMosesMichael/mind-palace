@@ -22,10 +22,40 @@ export function initializeDatabase(): void {
       createdAt TEXT NOT NULL
     );
 
+    -- Palaces
+    CREATE TABLE IF NOT EXISTS palaces (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      userId INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      description TEXT,
+      address TEXT,
+      imageId TEXT,
+      imageUrl TEXT,
+      isDefault INTEGER DEFAULT 0,
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL
+    );
+
+    -- Room Hotspots
+    CREATE TABLE IF NOT EXISTS room_hotspots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      userId INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      palaceId INTEGER NOT NULL REFERENCES palaces(id) ON DELETE CASCADE,
+      roomId INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+      x REAL NOT NULL,
+      y REAL NOT NULL,
+      width REAL NOT NULL,
+      height REAL NOT NULL,
+      label TEXT,
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL
+    );
+
     -- Rooms
     CREATE TABLE IF NOT EXISTS rooms (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       userId INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      palaceId INTEGER,
       moduleType TEXT NOT NULL,
       name TEXT NOT NULL,
       description TEXT,
@@ -168,6 +198,7 @@ export function initializeDatabase(): void {
       procedureId INTEGER REFERENCES procedures(id) ON DELETE SET NULL,
       logEntryId INTEGER REFERENCES task_logs(id) ON DELETE SET NULL,
       stepId INTEGER REFERENCES procedure_steps(id) ON DELETE SET NULL,
+      noteId INTEGER REFERENCES notes(id) ON DELETE SET NULL,
       caption TEXT,
       mimeType TEXT NOT NULL,
       sizeBytes INTEGER NOT NULL,
@@ -218,7 +249,11 @@ export function initializeDatabase(): void {
     );
 
     -- Indexes
+    CREATE INDEX IF NOT EXISTS idx_palaces_userId ON palaces(userId);
+    CREATE INDEX IF NOT EXISTS idx_room_hotspots_palaceId ON room_hotspots(palaceId);
+    CREATE INDEX IF NOT EXISTS idx_room_hotspots_userId ON room_hotspots(userId);
     CREATE INDEX IF NOT EXISTS idx_rooms_userId ON rooms(userId);
+    CREATE INDEX IF NOT EXISTS idx_rooms_palaceId ON rooms(palaceId);
     CREATE INDEX IF NOT EXISTS idx_schedules_roomId ON schedules(roomId);
     CREATE INDEX IF NOT EXISTS idx_schedules_userId ON schedules(userId);
     CREATE INDEX IF NOT EXISTS idx_task_logs_roomId ON task_logs(roomId);
@@ -226,10 +261,46 @@ export function initializeDatabase(): void {
     CREATE INDEX IF NOT EXISTS idx_procedure_steps_procedureId ON procedure_steps(procedureId);
     CREATE INDEX IF NOT EXISTS idx_supplies_procedureId ON supplies(procedureId);
     CREATE INDEX IF NOT EXISTS idx_photos_roomId ON photos(roomId);
+    CREATE INDEX IF NOT EXISTS idx_photos_noteId ON photos(noteId);
     CREATE INDEX IF NOT EXISTS idx_notes_roomId ON notes(roomId);
     CREATE INDEX IF NOT EXISTS idx_refs_roomId ON refs(roomId);
     CREATE INDEX IF NOT EXISTS idx_inventory_roomId ON inventory(roomId);
     CREATE INDEX IF NOT EXISTS idx_refresh_tokens_userId ON refresh_tokens(userId);
     CREATE INDEX IF NOT EXISTS idx_refresh_tokens_token ON refresh_tokens(token);
   `);
+
+  // Safe ALTER TABLE for palaceId column on rooms (for existing databases)
+  try {
+    db.exec(`ALTER TABLE rooms ADD COLUMN palaceId INTEGER REFERENCES palaces(id)`);
+  } catch {
+    // Column already exists — ignore
+  }
+
+  // Add imageUrl to palaces (for existing databases)
+  try {
+    db.exec(`ALTER TABLE palaces ADD COLUMN imageUrl TEXT`);
+  } catch {
+    // Column already exists — ignore
+  }
+
+  // Add photoId to supplies (Feature 2: supply photos)
+  try {
+    db.exec(`ALTER TABLE supplies ADD COLUMN photoId TEXT`);
+  } catch {
+    // Column already exists — ignore
+  }
+
+  // Add photoIds to notes (Feature 3: note image attachments)
+  try {
+    db.exec(`ALTER TABLE notes ADD COLUMN photoIds TEXT DEFAULT '[]'`);
+  } catch {
+    // Column already exists — ignore
+  }
+
+  // Add noteId to photos (Feature 3: photo-note association)
+  try {
+    db.exec(`ALTER TABLE photos ADD COLUMN noteId INTEGER`);
+  } catch {
+    // Column already exists — ignore
+  }
 }

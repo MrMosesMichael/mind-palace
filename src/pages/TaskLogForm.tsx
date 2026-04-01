@@ -13,7 +13,7 @@ import { todayISO } from '../lib/formatters';
 import styles from './TaskLogForm.module.css';
 
 export function TaskLogForm() {
-  const { id, lid } = useParams();
+  const { id, lid, palaceId } = useParams();
   const roomId = Number(id);
   const isEditing = !!lid;
   const existingLog = useTaskLog(lid ? Number(lid) : undefined);
@@ -83,12 +83,14 @@ export function TaskLogForm() {
       photoIds: existingLog?.photoIds ?? [],
     };
 
+    const logPath = palaceId ? `/palace/${palaceId}/room/${id}/log` : `/room/${id}/log`;
+
     if (isEditing && existingLog) {
       await updateTaskLog(existingLog.id!, data);
-      navigate(`/room/${id}/log`);
+      navigate(logPath);
     } else {
       await addTaskLog(data);
-      navigate(`/room/${id}/log`, { replace: true });
+      navigate(logPath, { replace: true });
     }
   }
 
@@ -96,7 +98,7 @@ export function TaskLogForm() {
     if (!existingLog) return;
     if (window.confirm(lore.confirmDelete)) {
       await deleteTaskLog(existingLog.id!);
-      navigate(`/room/${id}/log`);
+      navigate(palaceId ? `/palace/${palaceId}/room/${id}/log` : `/room/${id}/log`);
     }
   }
 

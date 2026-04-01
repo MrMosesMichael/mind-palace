@@ -7,17 +7,34 @@
 /* Photo header */
 .photoHeader {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   height: 120px;
   background: linear-gradient(135deg, rgba(196, 122, 74, 0.15), rgba(196, 122, 74, 0.05));
   border-radius: var(--radius-md);
   border: 1px solid var(--color-border);
+  position: relative;
+  overflow: hidden;
 }
 
 .photoIcon {
   font-size: 3rem;
   opacity: 0.6;
+}
+
+.heroImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+}
+
+.heroAddHint {
+  position: absolute;
+  bottom: var(--space-sm);
+  font-size: 0.6875rem;
+  color: var(--color-text-muted);
 }
 
 /* Meta bar */

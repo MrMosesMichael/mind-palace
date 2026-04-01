@@ -19,6 +19,11 @@ interface SearchResultItem {
   path: string;
 }
 
+function roomPath(room: { id?: number; palaceId?: number }): string {
+  if (room.palaceId) return `/palace/${room.palaceId}/room/${room.id}`;
+  return `/room/${room.id}`;
+}
+
 export function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResultItem[]>([]);
@@ -75,7 +80,7 @@ export function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
           icon: getModuleIcon(iconName),
           title: room.name,
           subtitle: room.description,
-          path: `/room/${room.id}`,
+          path: roomPath(room),
         });
       }
 
@@ -86,12 +91,13 @@ export function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
 
       for (const schedule of schedules) {
         const room = await db.rooms.get(schedule.roomId);
+        const prefix = room ? roomPath(room) : `/room/${schedule.roomId}`;
         items.push({
           type: 'schedule',
           icon: '\uD83D\uDCC5',
           title: schedule.name,
           subtitle: room?.name,
-          path: `/room/${schedule.roomId}/schedule/${schedule.id}`,
+          path: `${prefix}/schedule/${schedule.id}`,
         });
       }
 
@@ -103,12 +109,13 @@ export function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
 
       for (const proc of procedures) {
         const room = proc.roomId ? await db.rooms.get(proc.roomId) : undefined;
+        const prefix = room ? roomPath(room) : `/room/${proc.roomId}`;
         items.push({
           type: 'procedure',
           icon: room?.moduleType === 'kitchen' ? '\uD83C\uDF73' : '\uD83D\uDDC4',
           title: proc.title,
           subtitle: room?.name,
-          path: `/room/${proc.roomId}/procedure/${proc.id}`,
+          path: `${prefix}/procedure/${proc.id}`,
         });
       }
 
@@ -120,12 +127,13 @@ export function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
 
       for (const note of notes) {
         const room = note.roomId ? await db.rooms.get(note.roomId) : undefined;
+        const prefix = room ? roomPath(room) : (note.roomId ? `/room/${note.roomId}` : '');
         items.push({
           type: 'note',
           icon: '\uD83D\uDCDD',
           title: note.title ?? 'Note',
           subtitle: room?.name,
-          path: note.roomId ? `/room/${note.roomId}/notes` : '/',
+          path: prefix ? `${prefix}/notes` : '/',
         });
       }
 
@@ -137,12 +145,13 @@ export function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
 
       for (const ref of refs) {
         const room = ref.roomId ? await db.rooms.get(ref.roomId) : undefined;
+        const prefix = room ? roomPath(room) : (ref.roomId ? `/room/${ref.roomId}` : '');
         items.push({
           type: 'reference',
           icon: '\uD83D\uDCDA',
           title: ref.title,
           subtitle: room?.name,
-          path: ref.roomId ? `/room/${ref.roomId}/references` : '/',
+          path: prefix ? `${prefix}/references` : '/',
         });
       }
     } catch {

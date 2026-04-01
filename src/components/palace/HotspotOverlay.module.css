@@ -1,0 +1,66 @@
+.overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.hotspot {
+  position: absolute;
+  pointer-events: auto;
+  background: rgba(212, 163, 74, 0.1);
+  border: 2px solid rgba(212, 163, 74, 0.3);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  transition: all var(--transition-fast);
+  padding: var(--space-xs);
+  overflow: hidden;
+}
+
+.hotspot:hover {
+  background: rgba(212, 163, 74, 0.2);
+  border-color: var(--color-primary);
+  box-shadow: 0 0 12px rgba(212, 163, 74, 0.3);
+}
+
+.hotspotLabel {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: var(--color-text);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+  text-align: center;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.hotspotBadge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  background: var(--color-danger);
+  color: white;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.hotspotInfo {
+  font-size: 0.5625rem;
+  color: var(--color-text-secondary);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}

@@ -7,6 +7,8 @@ interface PhotoStripProps {
   logEntryId?: number;
   procedureId?: number;
   stepId?: number;
+  noteId?: number;
+  specificPhotoIds?: string[];
   onAdd?: () => void;
   onPhotoClick?: (photoId: string) => void;
   maxShow?: number;
@@ -17,11 +19,19 @@ export function PhotoThumbnail({
   logEntryId,
   procedureId,
   stepId,
+  noteId,
+  specificPhotoIds,
   onAdd,
   onPhotoClick,
   maxShow = 5,
 }: PhotoStripProps) {
-  const { photos } = usePhotos({ roomId, logEntryId, procedureId, stepId });
+  const { photos: filteredPhotos } = usePhotos({ roomId, logEntryId, procedureId, stepId, noteId });
+
+  // If specificPhotoIds is provided, use only those photos from the filtered set
+  // This is used for supply photos where we have a single photoId
+  const photos = specificPhotoIds
+    ? filteredPhotos.filter((p) => specificPhotoIds.includes(p.id))
+    : filteredPhotos;
   const [thumbUrls, setThumbUrls] = useState<Map<string, string>>(new Map());
   const urlsRef = useRef<Map<string, string>>(new Map());
 

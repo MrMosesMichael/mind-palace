@@ -7,6 +7,8 @@ router.use(authenticate);
 
 // Table name mapping (client uses camelCase, server uses snake_case)
 const TABLE_MAP: Record<string, string> = {
+  palaces: 'palaces',
+  roomHotspots: 'room_hotspots',
   rooms: 'rooms',
   schedules: 'schedules',
   taskLogs: 'task_logs',
@@ -27,6 +29,7 @@ const JSON_COLUMNS: Record<string, string[]> = {
   task_logs: ['photoIds'],
   procedures: ['tags'],
   procedure_steps: ['specs', 'photoIds'],
+  notes: ['photoIds'],
 };
 
 // Columns to exclude from inserts/updates (auto-managed)
@@ -49,7 +52,7 @@ function rowToClient(row: any, table: string): any {
     if (key === 'userId') continue; // Don't send userId to client
     if (jsonCols.includes(key) && typeof value === 'string') {
       try { result[camelKey] = JSON.parse(value); } catch { result[camelKey] = value; }
-    } else if (typeof value === 'number' && (key === 'isArchived' || key === 'isActive' || key === 'isPinned' || key === 'isRequired' || key === 'isAcknowledged' || key === 'notificationSent' || key === 'notificationsEnabled')) {
+    } else if (typeof value === 'number' && (key === 'isArchived' || key === 'isActive' || key === 'isPinned' || key === 'isRequired' || key === 'isAcknowledged' || key === 'notificationSent' || key === 'notificationsEnabled' || key === 'isDefault')) {
       result[camelKey] = value === 1;
     } else {
       result[camelKey] = value;

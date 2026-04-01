@@ -10,11 +10,13 @@ import { lore } from '../lib/lore';
 import styles from './ProcedureList.module.css';
 
 export function ProcedureList() {
-  const { id } = useParams();
+  const { id, palaceId } = useParams();
   const roomId = Number(id);
   const room = useRoom(roomId);
   const { procedures } = useProcedures(roomId);
   const navigate = useNavigate();
+
+  const basePath = palaceId ? `/palace/${palaceId}/room/${id}` : `/room/${id}`;
 
   const isKitchen = room?.moduleType === 'kitchen';
   const title = isKitchen ? lore.recipes.title : lore.procedures.title;
@@ -29,7 +31,7 @@ export function ProcedureList() {
         subtitle={room?.name}
         showBack
         actions={
-          <Button size="sm" onClick={() => navigate(`/room/${id}/procedure/new`)}>
+          <Button size="sm" onClick={() => navigate(`${basePath}/procedure/new`)}>
             {addLabel}
           </Button>
         }
@@ -40,7 +42,7 @@ export function ProcedureList() {
           <EmptyState
             message={emptyMsg}
             actionLabel={newLabel}
-            onAction={() => navigate(`/room/${id}/procedure/new`)}
+            onAction={() => navigate(`${basePath}/procedure/new`)}
             icon={isKitchen ? <span style={{ fontSize: '2rem' }}>{'\uD83C\uDF73'}</span> : undefined}
           />
         ) : isKitchen ? (
@@ -50,7 +52,7 @@ export function ProcedureList() {
               <RecipeCard
                 key={proc.id}
                 procedure={proc}
-                onClick={() => navigate(`/room/${id}/procedure/${proc.id}`)}
+                onClick={() => navigate(`${basePath}/procedure/${proc.id}`)}
               />
             ))}
           </div>
@@ -61,7 +63,7 @@ export function ProcedureList() {
               <button
                 key={proc.id}
                 className={styles.card}
-                onClick={() => navigate(`/room/${id}/procedure/${proc.id}`)}
+                onClick={() => navigate(`${basePath}/procedure/${proc.id}`)}
               >
                 <div className={styles.cardHeader}>
                   <span className={styles.title}>{proc.title}</span>

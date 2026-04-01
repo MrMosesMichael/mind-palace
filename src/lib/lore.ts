@@ -7,6 +7,15 @@ export const lore = {
   appName: 'The Mind Palace',
   appTagline: 'A knowledge warehouse for the things you maintain',
 
+  // Palace
+  palace: {
+    title: 'Your Palaces',
+    emptyState: 'No palaces in the kingdom yet.',
+    emptyAction: 'Build Your First Palace',
+    newPalace: 'Build a new palace',
+    deleteConfirm: 'Demolish this palace? All rooms inside will be lost.',
+  },
+
   // Navigation
   nav: {
     hallway: 'The Hallway',

@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
+import { PhotoThumbnail } from '../components/photo/PhotoThumbnail';
 import {
   useProcedures,
   useProcedure,
@@ -13,6 +14,7 @@ import {
 import { useProcedureReferences } from '../hooks/useReferences';
 import { useRoom } from '../hooks/useRooms';
 import { getModule } from '../modules';
+import { savePhoto } from '../services/photoStorage';
 import { lore } from '../lib/lore';
 import styles from './ProcedureForm.module.css';
 
@@ -81,6 +83,7 @@ interface StepDraft {
   specs: Record<string, string>;
   warning: string;
   tip: string;
+  pendingPhotos: File[];
 }
 
 interface ReferenceDraft {
@@ -103,10 +106,11 @@ interface SupplyDraft {
   unit: string;
   notes: string;
   isRequired: boolean;
+  photoId: string;
 }
 
 export function ProcedureForm() {
-  const { id, pid } = useParams();
+  const { id, pid, palaceId } = useParams();
   const roomId = Number(id);
   const isEditing = !!pid;
   const procedure = useProcedure(pid ? Number(pid) : undefined);
@@ -121,6 +125,12 @@ export function ProcedureForm() {
   const navigate = useNavigate();
 
   const isKitchen = room?.moduleType === 'kitchen';
+
+  // File input refs for photo capture
+  const stepPhotoInputRef = useRef<HTMLInputElement>(null);
+  const supplyPhotoInputRef = useRef<HTMLInputElement>(null);
+  const [activeStepPhotoIndex, setActiveStepPhotoIndex] = useState<number | null>(null);
+  const [activeSupplyPhotoIndex, setActiveSupplyPhotoIndex] = useState<number | null>(null);
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -152,6 +162,7 @@ export function ProcedureForm() {
           specs: { ...s.specs },
           warning: s.warning ?? '',
           tip: s.tip ?? '',
+          pendingPhotos: [],
         }))
       );
     }
@@ -173,6 +184,7 @@ export function ProcedureForm() {
           unit: s.unit ?? '',
           notes: s.notes ?? '',
           isRequired: s.isRequired,
+          photoId: s.photoId ?? '',
         }))
       );
       setLoaded(true);
@@ -196,7 +208,7 @@ export function ProcedureForm() {
   function addStepDraft() {
     setStepDrafts((prev) => [
       ...prev,
-      { instruction: '', specs: {}, warning: '', tip: '' },
+      { instruction: '', specs: {}, warning: '', tip: '', pendingPhotos: [] },
     ]);
   }
 
@@ -236,6 +248,7 @@ export function ProcedureForm() {
         unit: '',
         notes: '',
         isRequired: true,
+        photoId: '',
       },
     ]);
   }
@@ -273,6 +286,48 @@ export function ProcedureForm() {
     if (!current.includes(tag)) {
       setTagsStr(current.length > 0 ? `${tagsStr}, ${tag}` : tag);
     }
+  }
+
+  // Photo handlers for steps
+  function handleStepPhotoAdd(stepIndex: number) {
+    setActiveStepPhotoIndex(stepIndex);
+    stepPhotoInputRef.current?.click();
+  }
+
+  async function handleStepPhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files || files.length === 0 || activeStepPhotoIndex === null) return;
+    const file = files[0];
+    const draft = stepDrafts[activeStepPhotoIndex];
+
+    if (draft.id) {
+      // Existing step — save photo immediately
+      await savePhoto(file, { roomId, procedureId: pid ? Number(pid) : undefined, stepId: draft.id });
+    } else {
+      // New step — buffer for saving after step creation
+      updateStepDraft(activeStepPhotoIndex, {
+        pendingPhotos: [...draft.pendingPhotos, file],
+      });
+    }
+
+    setActiveStepPhotoIndex(null);
+    e.target.value = '';
+  }
+
+  // Photo handlers for supplies
+  async function handleSupplyPhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files || files.length === 0 || activeSupplyPhotoIndex === null) return;
+    const file = files[0];
+    const photo = await savePhoto(file, { roomId });
+    updateSupplyDraft(activeSupplyPhotoIndex, { photoId: photo.id });
+    setActiveSupplyPhotoIndex(null);
+    e.target.value = '';
+  }
+
+  function handleSupplyPhotoAdd(supplyIndex: number) {
+    setActiveSupplyPhotoIndex(supplyIndex);
+    supplyPhotoInputRef.current?.click();
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -318,6 +373,14 @@ export function ProcedureForm() {
     for (let i = 0; i < stepDrafts.length; i++) {
       const draft = stepDrafts[i];
       if (!draft.instruction.trim()) continue;
+
+      const photoIds: string[] = [];
+      if (draft.id) {
+        // Existing step — keep existing photoIds
+        const existingStep = existingSteps.find((s) => s.id === draft.id);
+        if (existingStep) photoIds.push(...existingStep.photoIds);
+      }
+
       const stepData = {
         procedureId: procId,
         orderIndex: i,
@@ -325,12 +388,22 @@ export function ProcedureForm() {
         specs: draft.specs,
         warning: draft.warning || undefined,
         tip: draft.tip || undefined,
-        photoIds: [],
+        photoIds,
       };
+
       if (draft.id) {
         await updateStep(draft.id, stepData);
       } else {
-        await addStep(stepData);
+        const newStepId = await addStep(stepData);
+        // Save any pending photos for new steps
+        if (draft.pendingPhotos.length > 0) {
+          const newPhotoIds: string[] = [];
+          for (const file of draft.pendingPhotos) {
+            const photo = await savePhoto(file, { roomId, procedureId: procId, stepId: newStepId });
+            newPhotoIds.push(photo.id);
+          }
+          await updateStep(newStepId, { photoIds: newPhotoIds });
+        }
       }
     }
 
@@ -358,6 +431,7 @@ export function ProcedureForm() {
         unit: draft.unit || undefined,
         notes: draft.notes || undefined,
         isRequired: draft.isRequired,
+        photoId: draft.photoId || undefined,
       };
       if (draft.id) {
         await updateSupply(draft.id, supplyData);
@@ -387,14 +461,15 @@ export function ProcedureForm() {
       }
     }
 
-    navigate(`/room/${id}/procedure/${procId}`, isEditing ? undefined : { replace: true });
+    const procPath = palaceId ? `/palace/${palaceId}/room/${id}/procedure/${procId}` : `/room/${id}/procedure/${procId}`;
+    navigate(procPath, isEditing ? undefined : { replace: true });
   }
 
   async function handleDelete() {
     if (!procedure) return;
     if (window.confirm(lore.confirmDelete)) {
       await deleteProcedure(procedure.id!);
-      navigate(`/room/${id}/procedures`);
+      navigate(palaceId ? `/palace/${palaceId}/room/${id}/procedures` : `/room/${id}/procedures`);
     }
   }
 
@@ -403,6 +478,22 @@ export function ProcedureForm() {
 
   return (
     <div>
+      {/* Hidden file inputs for photo capture */}
+      <input
+        ref={stepPhotoInputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={handleStepPhotoChange}
+      />
+      <input
+        ref={supplyPhotoInputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={handleSupplyPhotoChange}
+      />
+
       <PageHeader
         title={isEditing
           ? (isKitchen ? 'Edit Recipe' : 'Edit Procedure')
@@ -574,6 +665,26 @@ export function ProcedureForm() {
                 placeholder={supply.category === 'ingredient' ? 'Sifted, room temperature, etc.' : 'Deep socket needed, etc.'}
               />
 
+              {/* Photo attachment for non-ingredient supplies */}
+              {supply.category !== 'ingredient' && (
+                <div className={styles.supplyPhotoRow}>
+                  {supply.photoId ? (
+                    <PhotoThumbnail
+                      roomId={roomId}
+                      specificPhotoIds={[supply.photoId]}
+                      maxShow={1}
+                    />
+                  ) : null}
+                  <button
+                    type="button"
+                    className={styles.photoAddBtn}
+                    onClick={() => handleSupplyPhotoAdd(index)}
+                  >
+                    {supply.photoId ? 'Change Photo' : '+ Photo'}
+                  </button>
+                </div>
+              )}
+
               <label className={styles.toggle}>
                 <input
                   type="checkbox"
@@ -663,6 +774,30 @@ export function ProcedureForm() {
                   placeholder={isKitchen ? 'Chef\'s tip...' : 'Pro tip...'}
                 />
               </div>
+
+              {/* Step photos */}
+              {step.id ? (
+                <PhotoThumbnail
+                  stepId={step.id}
+                  roomId={roomId}
+                  onAdd={() => handleStepPhotoAdd(index)}
+                />
+              ) : (
+                <div className={styles.strip}>
+                  {step.pendingPhotos.length > 0 && (
+                    <span className={styles.pendingCount}>
+                      {step.pendingPhotos.length} photo{step.pendingPhotos.length > 1 ? 's' : ''} pending
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    className={styles.photoAddBtn}
+                    onClick={() => handleStepPhotoAdd(index)}
+                  >
+                    + Photo
+                  </button>
+                </div>
+              )}
             </div>
           ))}
 

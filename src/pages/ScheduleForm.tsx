@@ -25,7 +25,7 @@ const TIME_UNIT_OPTIONS = [
 ];
 
 export function ScheduleForm() {
-  const { id, sid } = useParams();
+  const { id, sid, palaceId } = useParams();
   const roomId = Number(id);
   const isEditing = !!sid;
   const existingSchedule = useSchedule(sid ? Number(sid) : undefined);
@@ -117,12 +117,14 @@ export function ScheduleForm() {
       isActive,
     };
 
+    const schedulesPath = palaceId ? `/palace/${palaceId}/room/${id}/schedules` : `/room/${id}/schedules`;
+
     if (isEditing && existingSchedule) {
       await updateSchedule(existingSchedule.id!, data);
-      navigate(`/room/${id}/schedules`);
+      navigate(schedulesPath);
     } else {
       await addSchedule(data);
-      navigate(`/room/${id}/schedules`, { replace: true });
+      navigate(schedulesPath, { replace: true });
     }
   }
 
@@ -130,7 +132,7 @@ export function ScheduleForm() {
     if (!existingSchedule) return;
     if (window.confirm(lore.confirmDelete)) {
       await deleteSchedule(existingSchedule.id!);
-      navigate(`/room/${id}/schedules`);
+      navigate(palaceId ? `/palace/${palaceId}/room/${id}/schedules` : `/room/${id}/schedules`);
     }
   }
 

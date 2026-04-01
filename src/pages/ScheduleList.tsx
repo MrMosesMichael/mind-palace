@@ -9,11 +9,13 @@ import { lore } from '../lib/lore';
 import styles from './ScheduleList.module.css';
 
 export function ScheduleList() {
-  const { id } = useParams();
+  const { id, palaceId } = useParams();
   const roomId = Number(id);
   const room = useRoom(roomId);
   const { schedules } = useSchedules(roomId);
   const navigate = useNavigate();
+
+  const basePath = palaceId ? `/palace/${palaceId}/room/${id}` : `/room/${id}`;
 
   const active = schedules.filter((s) => s.isActive);
   const inactive = schedules.filter((s) => !s.isActive);
@@ -25,7 +27,7 @@ export function ScheduleList() {
         subtitle={room?.name}
         showBack
         actions={
-          <Button size="sm" onClick={() => navigate(`/room/${id}/schedule/new`)}>
+          <Button size="sm" onClick={() => navigate(`${basePath}/schedule/new`)}>
             + Add
           </Button>
         }
@@ -36,7 +38,7 @@ export function ScheduleList() {
           <EmptyState
             message={lore.schedules.emptyState}
             actionLabel="Add a Schedule"
-            onAction={() => navigate(`/room/${id}/schedule/new`)}
+            onAction={() => navigate(`${basePath}/schedule/new`)}
           />
         ) : (
           <>
@@ -49,7 +51,7 @@ export function ScheduleList() {
                       key={schedule.id}
                       schedule={schedule}
                       room={room}
-                      onClick={() => navigate(`/room/${id}/schedule/${schedule.id}`)}
+                      onClick={() => navigate(`${basePath}/schedule/${schedule.id}`)}
                     />
                   ))}
                 </div>
@@ -65,7 +67,7 @@ export function ScheduleList() {
                       key={schedule.id}
                       schedule={schedule}
                       room={room}
-                      onClick={() => navigate(`/room/${id}/schedule/${schedule.id}`)}
+                      onClick={() => navigate(`${basePath}/schedule/${schedule.id}`)}
                     />
                   ))}
                 </div>

@@ -5,6 +5,8 @@ export const db = new MindPalaceDB();
 
 // Table name mapping from Dexie table names to sync API names
 const TABLE_SYNC_MAP: Record<string, string> = {
+  palaces: 'palaces',
+  roomHotspots: 'roomHotspots',
   rooms: 'rooms',
   schedules: 'schedules',
   taskLogs: 'taskLogs',
@@ -57,6 +59,20 @@ export async function initializeSettings() {
       reminderLeadMiles: 500,
       theme: 'dark',
       exportVersion: 1,
+    });
+  }
+
+  // Ensure at least one default palace exists (handles fresh installs on v2)
+  const palaceCount = await db.palaces.count();
+  if (palaceCount === 0) {
+    const now = new Date().toISOString();
+    await db.palaces.add({
+      name: 'My Palace',
+      description: 'Default palace',
+      imageUrl: '/images/palaces/tudor-bungalow.jpg',
+      isDefault: true,
+      createdAt: now,
+      updatedAt: now,
     });
   }
 }

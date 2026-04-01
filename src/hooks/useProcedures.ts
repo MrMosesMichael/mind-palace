@@ -2,6 +2,7 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import type { Procedure, ProcedureStep, Supply } from '../types';
 import { nowISO } from '../lib/formatters';
+import { deletePhoto as deletePhotoFromStorage } from '../services/photoStorage';
 
 export function useProcedures(roomId: number | undefined) {
   const procedures = useLiveQuery(
@@ -69,6 +70,17 @@ export function useProcedureSteps(procedureId: number | undefined) {
   }
 
   async function deleteStep(id: number) {
+    // Clean up associated photos before deleting the step
+    const step = await db.procedureSteps.get(id);
+    if (step?.photoIds?.length) {
+      for (const photoId of step.photoIds) {
+        try { await deletePhotoFromStorage(photoId); } catch { /* photo may already be gone */ }
+      }
+    }
+    const linkedPhotos = await db.photos.where('stepId').equals(id).toArray();
+    for (const photo of linkedPhotos) {
+      try { await deletePhotoFromStorage(photo.id); } catch { /* ignore */ }
+    }
     await db.procedureSteps.delete(id);
   }
 

@@ -45,7 +45,12 @@ function TaskRow({ item }: { item: ReminderItem }) {
     <div className={`${styles.task} ${statusClass}`}>
       <button
         className={styles.taskContent}
-        onClick={() => navigate(`/room/${item.room.id}/schedule/${item.schedule.id}`)}
+        onClick={() => {
+          const path = (item.room as any).palaceId
+            ? `/palace/${(item.room as any).palaceId}/room/${item.room.id}/schedule/${item.schedule.id}`
+            : `/room/${item.room.id}/schedule/${item.schedule.id}`;
+          navigate(path);
+        }}
       >
         <span className={styles.taskIcon}>
           {getModuleIcon(item.room.moduleType === 'garage' ? 'wrench' : item.room.moduleType === 'kitchen' ? 'flame' : item.room.moduleType === 'yard' ? 'leaf' : item.room.moduleType === 'bathroom' ? 'droplets' : 'house')}

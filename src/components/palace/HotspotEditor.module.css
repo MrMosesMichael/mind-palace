@@ -1,0 +1,131 @@
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-sm);
+  padding: var(--space-sm) var(--space-md);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.toolbarTitle {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.toolbarHint {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  flex: 1;
+}
+
+.toolbarActions {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.canvas {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 2px solid var(--color-primary-muted);
+  cursor: crosshair;
+  user-select: none;
+}
+
+.artwork {
+  width: 100%;
+  display: block;
+  object-fit: cover;
+  max-height: 500px;
+  pointer-events: none;
+}
+
+.hotspot {
+  position: absolute;
+  background: rgba(212, 163, 74, 0.15);
+  border: 2px solid rgba(212, 163, 74, 0.5);
+  border-radius: var(--radius-sm);
+  cursor: move;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.1s;
+}
+
+.hotspotSelected {
+  border-color: var(--color-primary);
+  border-width: 2px;
+  background: rgba(212, 163, 74, 0.25);
+  z-index: 10;
+}
+
+.hotspotUnassigned {
+  border-style: dashed;
+  border-color: var(--color-warning);
+  background: rgba(212, 148, 58, 0.15);
+}
+
+.hotspotLabel {
+  font-size: 0.625rem;
+  font-weight: 600;
+  color: var(--color-text);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  text-align: center;
+  pointer-events: none;
+  padding: 2px;
+  word-break: break-word;
+}
+
+/* Resize handles */
+.handle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: var(--color-primary);
+  border: 1px solid var(--color-bg);
+  border-radius: 2px;
+  z-index: 20;
+}
+
+.handleNW {
+  top: -5px;
+  left: -5px;
+  cursor: nw-resize;
+}
+
+.handleNE {
+  top: -5px;
+  right: -5px;
+  cursor: ne-resize;
+}
+
+.handleSW {
+  bottom: -5px;
+  left: -5px;
+  cursor: sw-resize;
+}
+
+.handleSE {
+  bottom: -5px;
+  right: -5px;
+  cursor: se-resize;
+}
+
+.configPanel {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-md);
+  padding: var(--space-md);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}

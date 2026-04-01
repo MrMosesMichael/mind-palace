@@ -14,7 +14,6 @@ export const kitchenModule: ModuleDefinition = {
       required: true,
       options: ['full-kitchen', 'pantry', 'appliance', 'outdoor-grill'],
     },
-    { key: 'purchaseDate', label: 'Purchase Date', type: 'date' },
   ],
   trackingUnit: null,
   scheduleTypes: ['time', 'seasonal', 'manual'],

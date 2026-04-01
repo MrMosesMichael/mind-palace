@@ -26,7 +26,7 @@ export function useRooms() {
   }
 
   async function deleteRoom(id: number) {
-    await db.transaction('rw', [db.rooms, db.schedules, db.taskLogs, db.procedures, db.procedureSteps, db.supplies, db.references, db.photos, db.notes, db.reminders, db.inventory], async () => {
+    await db.transaction('rw', [db.rooms, db.schedules, db.taskLogs, db.procedures, db.procedureSteps, db.supplies, db.references, db.photos, db.notes, db.reminders, db.inventory, db.roomHotspots], async () => {
       const procedureIds = (await db.procedures.where('roomId').equals(id).toArray()).map(p => p.id!);
 
       // Delete procedure children
@@ -44,6 +44,8 @@ export function useRooms() {
       await db.reminders.where('roomId').equals(id).delete();
       await db.inventory.where('roomId').equals(id).delete();
       await db.photos.where('roomId').equals(id).delete();
+      // Delete any hotspots pointing to this room
+      await db.roomHotspots.where('roomId').equals(id).delete();
       await db.rooms.delete(id);
     });
   }
@@ -64,4 +66,19 @@ export function useRoom(id: number | undefined) {
     [id]
   );
   return room;
+}
+
+export function usePalaceRooms(palaceId: number | undefined) {
+  const rooms = useLiveQuery(
+    () =>
+      palaceId
+        ? db.rooms
+            .where('palaceId')
+            .equals(palaceId)
+            .filter((r) => !r.isArchived)
+            .sortBy('updatedAt')
+        : Promise.resolve([] as Room[]),
+    [palaceId]
+  );
+  return rooms ?? [];
 }

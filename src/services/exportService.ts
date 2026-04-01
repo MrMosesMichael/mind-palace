@@ -7,6 +7,8 @@ import type { Photo } from '../types';
 // ─── Constants ──────────────────────────────────────────────
 
 const TABLE_NAMES = [
+  'palaces',
+  'roomHotspots',
   'rooms',
   'schedules',
   'taskLogs',
@@ -171,6 +173,8 @@ export async function importWarehouse(
   await db.transaction(
     'rw',
     [
+      db.palaces,
+      db.roomHotspots,
       db.rooms,
       db.schedules,
       db.taskLogs,

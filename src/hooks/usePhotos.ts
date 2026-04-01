@@ -12,10 +12,11 @@ interface PhotoFilters {
   procedureId?: number;
   logEntryId?: number;
   stepId?: number;
+  noteId?: number;
 }
 
 export function usePhotos(filters: PhotoFilters) {
-  const { roomId, procedureId, logEntryId, stepId } = filters;
+  const { roomId, procedureId, logEntryId, stepId, noteId } = filters;
 
   const photos = useLiveQuery(
     async () => {
@@ -26,11 +27,12 @@ export function usePhotos(filters: PhotoFilters) {
           if (procedureId !== undefined && p.procedureId !== procedureId) return false;
           if (logEntryId !== undefined && p.logEntryId !== logEntryId) return false;
           if (stepId !== undefined && p.stepId !== stepId) return false;
+          if (noteId !== undefined && p.noteId !== noteId) return false;
           return true;
         })
         .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
     },
-    [roomId, procedureId, logEntryId, stepId]
+    [roomId, procedureId, logEntryId, stepId, noteId]
   );
 
   async function addPhoto(file: File, metadata: { caption?: string }): Promise<Photo> {
@@ -39,6 +41,7 @@ export function usePhotos(filters: PhotoFilters) {
       procedureId,
       logEntryId,
       stepId,
+      noteId,
       caption: metadata.caption,
     });
   }

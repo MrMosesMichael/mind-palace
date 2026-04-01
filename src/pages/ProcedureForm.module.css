@@ -202,3 +202,40 @@
 .spacer {
   flex: 1;
 }
+
+/* Photo strip in step editors */
+.strip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.pendingCount {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.photoAddBtn {
+  font-size: 0.75rem;
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1px dashed var(--color-border);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: all var(--transition-fast);
+}
+
+.photoAddBtn:hover {
+  border-color: var(--color-primary-muted);
+  color: var(--color-text-secondary);
+}
+
+/* Supply photo row */
+.supplyPhotoRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}

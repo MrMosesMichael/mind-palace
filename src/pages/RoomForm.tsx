@@ -11,7 +11,7 @@ import type { ModuleDefinition } from '../types/modules';
 import styles from './RoomForm.module.css';
 
 export function RoomForm() {
-  const { id } = useParams();
+  const { id, palaceId } = useParams();
   const isEditing = !!id;
   const existingRoom = useRoom(id ? Number(id) : undefined);
   const { addRoom, updateRoom } = useRooms();
@@ -62,15 +62,16 @@ export function RoomForm() {
         description: description || undefined,
         metadata: processedMetadata,
       });
-      navigate(`/room/${existingRoom.id}`);
+      navigate(palaceId ? `/palace/${palaceId}/room/${existingRoom.id}` : `/room/${existingRoom.id}`);
     } else {
       const newId = await addRoom({
+        palaceId: Number(palaceId),
         moduleType: selectedModuleType,
         name,
         description: description || undefined,
         metadata: processedMetadata,
       });
-      navigate(`/room/${newId}`, { replace: true });
+      navigate(palaceId ? `/palace/${palaceId}/room/${newId}` : `/room/${newId}`, { replace: true });
     }
   }
 

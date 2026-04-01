@@ -138,6 +138,7 @@ export async function pullSync(): Promise<void> {
 
     // Merge server data into local Dexie
     const allTables = [
+      db.palaces, db.roomHotspots,
       db.rooms, db.schedules, db.taskLogs, db.procedures,
       db.procedureSteps, db.supplies, db.inventory, db.references,
       db.photos, db.notes, db.reminders, db.appSettings,
@@ -145,6 +146,8 @@ export async function pullSync(): Promise<void> {
     await db.transaction('rw', allTables, async () => {
         // For each table, clear local and bulk-put server data
         // This is a "server wins" strategy — appropriate for pull-on-load
+        if (data.palaces) { await db.palaces.clear(); await db.palaces.bulkPut(data.palaces); }
+        if (data.roomHotspots) { await db.roomHotspots.clear(); await db.roomHotspots.bulkPut(data.roomHotspots); }
         if (data.rooms) { await db.rooms.clear(); await db.rooms.bulkPut(data.rooms); }
         if (data.schedules) { await db.schedules.clear(); await db.schedules.bulkPut(data.schedules); }
         if (data.taskLogs) { await db.taskLogs.clear(); await db.taskLogs.bulkPut(data.taskLogs); }
