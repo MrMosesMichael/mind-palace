@@ -27,7 +27,6 @@ import { InventoryList } from './pages/InventoryList';
 import { InventoryForm } from './pages/InventoryForm';
 import { StubPage } from './pages/StubPage';
 import { initializeSettings } from './db';
-import { lore } from './lib/lore';
 
 function AppRoutes() {
   const { isLoggedIn, isLoading } = useAuth();
