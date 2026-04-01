@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { PageHeader } from '../components/layout/PageHeader';
@@ -239,21 +239,25 @@ export function PalaceView() {
 
   // Palace artwork URL — prefer imageId (photo storage), fall back to imageUrl (static)
   const [artworkUrl, setArtworkUrl] = useState<string | null>(null);
-  useLiveQuery(async () => {
-    if (palace.imageId) {
-      try {
-        const url = await getPhotoUrl(palace.imageId);
-        setArtworkUrl(url);
-        return;
-      } catch {
-        // fall through to imageUrl
+  useEffect(() => {
+    let cancelled = false;
+    async function loadArtwork() {
+      if (palace.imageId) {
+        try {
+          const url = await getPhotoUrl(palace.imageId);
+          if (!cancelled) { setArtworkUrl(url); return; }
+        } catch {
+          // fall through to imageUrl
+        }
+      }
+      if (palace.imageUrl) {
+        if (!cancelled) setArtworkUrl(palace.imageUrl);
+      } else {
+        if (!cancelled) setArtworkUrl(null);
       }
     }
-    if (palace.imageUrl) {
-      setArtworkUrl(palace.imageUrl);
-    } else {
-      setArtworkUrl(null);
-    }
+    loadArtwork();
+    return () => { cancelled = true; };
   }, [palace.imageId, palace.imageUrl]);
 
   // Group rooms by module type for fallback view

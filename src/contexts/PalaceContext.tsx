@@ -1,5 +1,5 @@
 import { createContext, useContext, type ReactNode } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Navigate } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../db';
 import type { Palace } from '../types';
@@ -15,12 +15,18 @@ export function PalaceProvider({ children }: { children: ReactNode }) {
   const { palaceId: palaceIdParam } = useParams();
   const palaceId = palaceIdParam ? Number(palaceIdParam) : undefined;
 
+  // Returns undefined while loading, null if not found, Palace if found
   const palace = useLiveQuery(
-    () => (palaceId ? db.palaces.get(palaceId) : undefined),
+    async () => {
+      if (!palaceId) return null;
+      const p = await db.palaces.get(palaceId);
+      return p ?? null;
+    },
     [palaceId]
   );
 
-  if (!palace) {
+  // Still loading (query hasn't resolved yet)
+  if (palace === undefined) {
     return (
       <div
         style={{
@@ -34,6 +40,11 @@ export function PalaceProvider({ children }: { children: ReactNode }) {
         Loading palace...
       </div>
     );
+  }
+
+  // Palace not found — redirect to selector
+  if (palace === null) {
+    return <Navigate to="/" replace />;
   }
 
   return (
