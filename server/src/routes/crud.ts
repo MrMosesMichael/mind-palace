@@ -6,7 +6,6 @@ import { authenticate } from '../middleware/auth.js';
 import {
   TABLE_MAP,
   FILTER_COLUMNS,
-  camelToSnake,
   rowToClient,
   clientToRow,
 } from '../lib/dbUtils.js';
@@ -246,16 +245,15 @@ router.get('/:table', (req: Request, res: Response) => {
   for (const [queryParam, columnName] of Object.entries(filterDefs)) {
     const value = req.query[queryParam];
     if (value !== undefined) {
-      const snakeCol = camelToSnake(columnName);
-      // Handle boolean filter values
+      // SQL columns are camelCase (matching client), no conversion needed
       if (value === 'true') {
-        conditions.push(`${snakeCol} = ?`);
+        conditions.push(`${columnName} = ?`);
         params.push(1);
       } else if (value === 'false') {
-        conditions.push(`${snakeCol} = ?`);
+        conditions.push(`${columnName} = ?`);
         params.push(0);
       } else {
-        conditions.push(`${snakeCol} = ?`);
+        conditions.push(`${columnName} = ?`);
         params.push(value);
       }
     }

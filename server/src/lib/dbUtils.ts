@@ -87,16 +87,16 @@ export function clientToRow(
 ): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   const jsonCols = JSON_COLUMNS[table] || [];
+  // NOTE: SQL columns are camelCase (matching client), so no case conversion needed
   for (const [key, value] of Object.entries(data)) {
-    const snakeKey = camelToSnake(key);
-    if (EXCLUDE_COLUMNS.includes(snakeKey)) continue;
-    if (snakeKey === 'id' && !options?.preserveId) continue;
-    if (jsonCols.includes(snakeKey) && typeof value === 'object' && value !== null) {
-      result[snakeKey] = JSON.stringify(value);
+    if (EXCLUDE_COLUMNS.includes(key)) continue;
+    if (key === 'id' && !options?.preserveId) continue;
+    if (jsonCols.includes(key) && typeof value === 'object' && value !== null) {
+      result[key] = JSON.stringify(value);
     } else if (typeof value === 'boolean') {
-      result[snakeKey] = value ? 1 : 0;
+      result[key] = value ? 1 : 0;
     } else {
-      result[snakeKey] = value;
+      result[key] = value;
     }
   }
   return result;
