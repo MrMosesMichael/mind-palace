@@ -79,7 +79,7 @@ export function ProcedureList() {
                 <RecipeCard
                   key={proc.id}
                   procedure={proc}
-                  roomBadge={hasMultipleKitchens ? roomNameMap[proc.roomId] : undefined}
+                  roomBadge={hasMultipleKitchens && proc.roomId ? roomNameMap[proc.roomId] : undefined}
                   onClick={() => navigate(procPath)}
                 />
               );

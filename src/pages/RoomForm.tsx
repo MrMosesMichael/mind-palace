@@ -7,7 +7,6 @@ import { Select } from '../components/ui/Select';
 import { useRooms, useRoom } from '../hooks/useRooms';
 import { usePalace } from '../hooks/usePalaces';
 import { getAllModules, getModule, getModuleIcon } from '../modules';
-import { lore } from '../lib/lore';
 import type { ModuleDefinition } from '../types/modules';
 import styles from './RoomForm.module.css';
 
