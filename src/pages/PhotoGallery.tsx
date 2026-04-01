@@ -23,9 +23,6 @@ export function PhotoGallery() {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Thumbnail object URLs
-  const [thumbUrls, setThumbUrls] = useState<Record<string, string>>({});
-
   // Viewer state
   const [viewingIndex, setViewingIndex] = useState<number | null>(null);
   const [fullUrl, setFullUrl] = useState<string | null>(null);
@@ -39,46 +36,6 @@ export function PhotoGallery() {
   const [isUploading, setIsUploading] = useState(false);
 
   const viewingPhoto = viewingIndex !== null ? photos[viewingIndex] : null;
-
-  // Generate and revoke thumbnail object URLs
-  useEffect(() => {
-    const newUrls: Record<string, string> = {};
-    const toRevoke: string[] = [];
-
-    for (const photo of photos) {
-      if (photo.thumbnailBlob) {
-        // Reuse existing URL if the photo is already mapped
-        if (thumbUrls[photo.id] !== undefined) {
-          newUrls[photo.id] = thumbUrls[photo.id];
-        } else {
-          newUrls[photo.id] = URL.createObjectURL(photo.thumbnailBlob);
-        }
-      }
-    }
-
-    // Revoke URLs for photos no longer in the list
-    for (const [photoId, url] of Object.entries(thumbUrls)) {
-      if (!(photoId in newUrls)) {
-        toRevoke.push(url);
-      }
-    }
-
-    setThumbUrls(newUrls);
-
-    return () => {
-      toRevoke.forEach(URL.revokeObjectURL);
-    };
-    // Only re-run when the photo list identity changes (by id set)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [photos.map((p) => p.id).join(',')]);
-
-  // Revoke all thumb URLs on unmount
-  useEffect(() => {
-    return () => {
-      Object.values(thumbUrls).forEach(URL.revokeObjectURL);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // Set full-resolution image URL when viewingIndex changes
   useEffect(() => {
@@ -232,16 +189,12 @@ export function PhotoGallery() {
                 onClick={() => openViewer(index)}
                 aria-label={photo.caption ?? `Photo ${index + 1}`}
               >
-                {thumbUrls[photo.id] ? (
-                  <img
-                    className={styles.thumbImg}
-                    src={thumbUrls[photo.id]}
-                    alt={photo.caption ?? ''}
-                    loading="lazy"
-                  />
-                ) : (
-                  <div className={styles.thumbPlaceholder} />
-                )}
+                <img
+                  className={styles.thumbImg}
+                  src={getPhotoUrl(photo.id)}
+                  alt={photo.caption ?? ''}
+                  loading="lazy"
+                />
                 {photo.caption && (
                   <span className={styles.thumbCaption}>{photo.caption}</span>
                 )}

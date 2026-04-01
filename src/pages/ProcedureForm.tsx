@@ -141,6 +141,7 @@ export function ProcedureForm() {
   const [supplyDrafts, setSupplyDrafts] = useState<SupplyDraft[]>([]);
   const [referenceDrafts, setReferenceDrafts] = useState<ReferenceDraft[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Populate when editing
   useEffect(() => {
@@ -324,13 +325,20 @@ export function ProcedureForm() {
     const files = e.target.files;
     if (!files || files.length === 0 || activeSupplyPhotoIndex === null) return;
     const file = files[0];
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('roomId', String(roomId));
-    const uploadRes = await apiFetch('/api/photos/upload', { method: 'POST', body: formData });
-    if (!uploadRes.ok) throw new Error('Upload failed');
-    const photo = await uploadRes.json();
-    updateSupplyDraft(activeSupplyPhotoIndex, { photoId: photo.id });
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('roomId', String(roomId));
+      const uploadRes = await apiFetch('/api/photos/upload', { method: 'POST', body: formData });
+      if (!uploadRes.ok) {
+        console.error('Supply photo upload failed:', uploadRes.status);
+        return;
+      }
+      const photo = await uploadRes.json();
+      updateSupplyDraft(activeSupplyPhotoIndex, { photoId: photo.id });
+    } catch (err) {
+      console.error('Supply photo upload error:', err);
+    }
     setActiveSupplyPhotoIndex(null);
     e.target.value = '';
   }
@@ -342,144 +350,153 @@ export function ProcedureForm() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
 
-    const tags = tagsStr
-      .split(',')
-      .map((t) => t.trim().toLowerCase())
-      .filter(Boolean);
+    try {
+      const tags = tagsStr
+        .split(',')
+        .map((t) => t.trim().toLowerCase())
+        .filter(Boolean);
 
-    let procId: number;
+      let procId: number;
 
-    if (isEditing && procedure) {
-      procId = procedure.id!;
-      await updateProcedure(procId, {
-        title,
-        description: description || undefined,
-        estimatedTime: estimatedTime || undefined,
-        difficulty: difficulty as Procedure['difficulty'],
-        tags,
-      });
-    } else {
-      procId = await addProcedure({
-        roomId,
-        title,
-        description: description || undefined,
-        estimatedTime: estimatedTime || undefined,
-        difficulty: difficulty as Procedure['difficulty'],
-        tags,
-      });
-    }
-
-    // Save steps
-    if (isEditing) {
-      // Delete removed steps
-      const existingIds = existingSteps.map((s) => s.id!);
-      const keptIds = stepDrafts.filter((d) => d.id).map((d) => d.id!);
-      for (const eid of existingIds) {
-        if (!keptIds.includes(eid)) await deleteStep(eid);
-      }
-    }
-
-    for (let i = 0; i < stepDrafts.length; i++) {
-      const draft = stepDrafts[i];
-      if (!draft.instruction.trim()) continue;
-
-      const photoIds: string[] = [];
-      if (draft.id) {
-        // Existing step — keep existing photoIds
-        const existingStep = existingSteps.find((s) => s.id === draft.id);
-        if (existingStep) photoIds.push(...existingStep.photoIds);
-      }
-
-      const stepData = {
-        procedureId: procId,
-        orderIndex: i,
-        instruction: draft.instruction,
-        specs: draft.specs,
-        warning: draft.warning || undefined,
-        tip: draft.tip || undefined,
-        photoIds,
-      };
-
-      if (draft.id) {
-        await updateStep(draft.id, stepData);
+      if (isEditing && procedure) {
+        procId = procedure.id!;
+        await updateProcedure(procId, {
+          title,
+          description: description || undefined,
+          estimatedTime: estimatedTime || undefined,
+          difficulty: difficulty as Procedure['difficulty'],
+          tags,
+        });
       } else {
-        const newStepId = await addStep(stepData);
-        // Save any pending photos for new steps
-        if (draft.pendingPhotos.length > 0) {
-          const newPhotoIds: string[] = [];
-          for (const file of draft.pendingPhotos) {
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('roomId', String(roomId));
-            formData.append('procedureId', String(procId));
-            formData.append('stepId', String(newStepId));
-            const uploadRes = await apiFetch('/api/photos/upload', { method: 'POST', body: formData });
-            if (!uploadRes.ok) throw new Error('Upload failed');
-            const photo = await uploadRes.json();
-            newPhotoIds.push(photo.id);
-          }
-          await updateStep(newStepId, { photoIds: newPhotoIds });
-        }
-      }
-    }
-
-    // Save supplies
-    if (isEditing) {
-      const existingIds = existingSupplies.map((s) => s.id!);
-      const keptIds = supplyDrafts.filter((d) => d.id).map((d) => d.id!);
-      for (const eid of existingIds) {
-        if (!keptIds.includes(eid)) await deleteSupply(eid);
-      }
-    }
-
-    for (const draft of supplyDrafts) {
-      if (!draft.name.trim()) continue;
-      const supplyData = {
-        procedureId: procId,
-        category: draft.category as Supply['category'],
-        name: draft.name,
-        identifier: draft.identifier || undefined,
-        manufacturer: draft.manufacturer || undefined,
-        supplier: draft.supplier || undefined,
-        supplierUrl: draft.supplierUrl || undefined,
-        price: draft.price ? Number(draft.price) : undefined,
-        quantity: draft.quantity ? parseFraction(draft.quantity) : 1,
-        unit: draft.unit || undefined,
-        notes: draft.notes || undefined,
-        isRequired: draft.isRequired,
-        photoId: draft.photoId || undefined,
-      };
-      if (draft.id) {
-        await updateSupply(draft.id, supplyData);
-      } else {
-        await addSupply(supplyData);
-      }
-    }
-
-    // Save references
-    if (isEditing) {
-      const existingRefIds = existingReferences.map((r) => r.id!);
-      const keptRefIds = referenceDrafts.filter((d) => d.id).map((d) => d.id!);
-      for (const eid of existingRefIds) {
-        if (!keptRefIds.includes(eid)) await deleteReference(eid);
-      }
-    }
-
-    for (const draft of referenceDrafts) {
-      if (!draft.title.trim() && !draft.url.trim()) continue;
-      if (!draft.id) {
-        await addReference({
-          procedureId: procId,
-          title: draft.title || draft.url,
-          url: draft.url,
-          type: draft.type as Reference['type'],
+        procId = await addProcedure({
+          roomId,
+          title,
+          description: description || undefined,
+          estimatedTime: estimatedTime || undefined,
+          difficulty: difficulty as Procedure['difficulty'],
+          tags,
         });
       }
-    }
 
-    const procPath = palaceId ? `/palace/${palaceId}/room/${id}/procedure/${procId}` : `/room/${id}/procedure/${procId}`;
-    navigate(procPath, isEditing ? undefined : { replace: true });
+      // Save steps
+      if (isEditing) {
+        const existingIds = existingSteps.map((s) => s.id!);
+        const keptIds = stepDrafts.filter((d) => d.id).map((d) => d.id!);
+        for (const eid of existingIds) {
+          if (!keptIds.includes(eid)) await deleteStep(eid);
+        }
+      }
+
+      for (let i = 0; i < stepDrafts.length; i++) {
+        const draft = stepDrafts[i];
+        if (!draft.instruction.trim()) continue;
+
+        const photoIds: string[] = [];
+        if (draft.id) {
+          const existingStep = existingSteps.find((s) => s.id === draft.id);
+          if (existingStep) photoIds.push(...existingStep.photoIds);
+        }
+
+        const stepData = {
+          procedureId: procId,
+          orderIndex: i,
+          instruction: draft.instruction,
+          specs: draft.specs,
+          warning: draft.warning || undefined,
+          tip: draft.tip || undefined,
+          photoIds,
+        };
+
+        if (draft.id) {
+          await updateStep(draft.id, stepData);
+        } else {
+          const newStepId = await addStep(stepData);
+          if (draft.pendingPhotos.length > 0) {
+            const newPhotoIds: string[] = [];
+            for (const file of draft.pendingPhotos) {
+              const formData = new FormData();
+              formData.append('file', file);
+              formData.append('roomId', String(roomId));
+              formData.append('procedureId', String(procId));
+              formData.append('stepId', String(newStepId));
+              const uploadRes = await apiFetch('/api/photos/upload', { method: 'POST', body: formData });
+              if (uploadRes.ok) {
+                const photo = await uploadRes.json();
+                newPhotoIds.push(photo.id);
+              }
+            }
+            if (newPhotoIds.length > 0) {
+              await updateStep(newStepId, { photoIds: newPhotoIds });
+            }
+          }
+        }
+      }
+
+      // Save supplies
+      if (isEditing) {
+        const existingIds = existingSupplies.map((s) => s.id!);
+        const keptIds = supplyDrafts.filter((d) => d.id).map((d) => d.id!);
+        for (const eid of existingIds) {
+          if (!keptIds.includes(eid)) await deleteSupply(eid);
+        }
+      }
+
+      for (const draft of supplyDrafts) {
+        if (!draft.name.trim()) continue;
+        const supplyData = {
+          procedureId: procId,
+          category: draft.category as Supply['category'],
+          name: draft.name,
+          identifier: draft.identifier || undefined,
+          manufacturer: draft.manufacturer || undefined,
+          supplier: draft.supplier || undefined,
+          supplierUrl: draft.supplierUrl || undefined,
+          price: draft.price ? Number(draft.price) : undefined,
+          quantity: draft.quantity ? parseFraction(draft.quantity) : 1,
+          unit: draft.unit || undefined,
+          notes: draft.notes || undefined,
+          isRequired: draft.isRequired,
+          photoId: draft.photoId || undefined,
+        };
+        if (draft.id) {
+          await updateSupply(draft.id, supplyData);
+        } else {
+          await addSupply(supplyData);
+        }
+      }
+
+      // Save references
+      if (isEditing) {
+        const existingRefIds = existingReferences.map((r) => r.id!);
+        const keptRefIds = referenceDrafts.filter((d) => d.id).map((d) => d.id!);
+        for (const eid of existingRefIds) {
+          if (!keptRefIds.includes(eid)) await deleteReference(eid);
+        }
+      }
+
+      for (const draft of referenceDrafts) {
+        if (!draft.title.trim() && !draft.url.trim()) continue;
+        if (!draft.id) {
+          await addReference({
+            procedureId: procId,
+            title: draft.title || draft.url,
+            url: draft.url,
+            type: draft.type as Reference['type'],
+          });
+        }
+      }
+
+      const procPath = palaceId ? `/palace/${palaceId}/room/${id}/procedure/${procId}` : `/room/${id}/procedure/${procId}`;
+      navigate(procPath, isEditing ? undefined : { replace: true });
+    } catch (err) {
+      console.error('Procedure save failed:', err);
+      alert('Save failed. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   async function handleDelete() {
@@ -868,8 +885,8 @@ export function ProcedureForm() {
           <Button type="button" variant="ghost" onClick={() => navigate(-1)}>
             Cancel
           </Button>
-          <Button type="submit">
-            {isEditing ? 'Save' : (isKitchen ? 'Create Recipe' : 'Create Procedure')}
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? 'Saving...' : isEditing ? 'Save' : (isKitchen ? 'Create Recipe' : 'Create Procedure')}
           </Button>
         </div>
       </form>

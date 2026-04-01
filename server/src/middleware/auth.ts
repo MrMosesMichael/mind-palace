@@ -19,13 +19,24 @@ declare global {
 }
 
 export function authenticate(req: Request, res: Response, next: NextFunction): void {
+  let token: string | undefined;
+
+  // Check Authorization header first
   const header = req.headers.authorization;
-  if (!header?.startsWith('Bearer ')) {
+  if (header?.startsWith('Bearer ')) {
+    token = header.slice(7);
+  }
+
+  // Fall back to query parameter (needed for <img> tags that can't set headers)
+  if (!token && req.query.token) {
+    token = req.query.token as string;
+  }
+
+  if (!token) {
     res.status(401).json({ error: 'Missing authorization token' });
     return;
   }
 
-  const token = header.slice(7);
   try {
     const payload = jwt.verify(token, JWT_SECRET) as AuthPayload;
     req.user = payload;

@@ -1,5 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
-import { usePhotos } from '../../hooks/usePhotos';
+import { usePhotos, getPhotoUrl } from '../../hooks/usePhotos';
 import styles from './PhotoThumbnail.module.css';
 
 interface PhotoStripProps {
@@ -32,43 +31,6 @@ export function PhotoThumbnail({
   const photos = specificPhotoIds
     ? filteredPhotos.filter((p) => specificPhotoIds.includes(p.id))
     : filteredPhotos;
-  const [thumbUrls, setThumbUrls] = useState<Map<string, string>>(new Map());
-  const urlsRef = useRef<Map<string, string>>(new Map());
-
-  useEffect(() => {
-    const nextUrls = new Map<string, string>();
-
-    for (const photo of photos) {
-      if (!photo.thumbnailBlob) continue;
-
-      // Reuse existing URL if blob hasn't changed
-      const existing = urlsRef.current.get(photo.id);
-      if (existing) {
-        nextUrls.set(photo.id, existing);
-      } else {
-        const url = URL.createObjectURL(photo.thumbnailBlob);
-        nextUrls.set(photo.id, url);
-      }
-    }
-
-    // Revoke URLs that are no longer needed
-    for (const [id, url] of urlsRef.current) {
-      if (!nextUrls.has(id)) {
-        URL.revokeObjectURL(url);
-      }
-    }
-
-    urlsRef.current = nextUrls;
-    setThumbUrls(new Map(nextUrls));
-
-    return () => {
-      // Revoke all URLs on unmount
-      for (const url of urlsRef.current.values()) {
-        URL.revokeObjectURL(url);
-      }
-      urlsRef.current = new Map();
-    };
-  }, [photos]);
 
   if (photos.length === 0 && !onAdd) {
     return null;
@@ -79,28 +41,22 @@ export function PhotoThumbnail({
 
   return (
     <div className={styles.strip}>
-      {visible.map((photo) => {
-        const url = thumbUrls.get(photo.id);
-        return (
-          <button
-            key={photo.id}
-            type="button"
-            className={styles.thumb}
-            onClick={() => onPhotoClick?.(photo.id)}
-            aria-label={photo.caption || 'Photo thumbnail'}
-          >
-            {url ? (
-              <img
-                src={url}
-                alt={photo.caption || ''}
-                className={styles.thumbImg}
-              />
-            ) : (
-              <span className={styles.thumbPlaceholder} />
-            )}
-          </button>
-        );
-      })}
+      {visible.map((photo) => (
+        <button
+          key={photo.id}
+          type="button"
+          className={styles.thumb}
+          onClick={() => onPhotoClick?.(photo.id)}
+          aria-label={photo.caption || 'Photo thumbnail'}
+        >
+          <img
+            src={getPhotoUrl(photo.id)}
+            alt={photo.caption || ''}
+            className={styles.thumbImg}
+            loading="lazy"
+          />
+        </button>
+      ))}
 
       {overflowCount > 0 && (
         <span className={styles.more}>+{overflowCount}</span>

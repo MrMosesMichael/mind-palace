@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiGet, apiDelete as apiDeleteFn } from '../services/api';
-import { apiFetch } from '../services/apiClient';
+import { apiFetch, getTokens } from '../services/apiClient';
 import type { Photo } from '../types';
 
 interface PhotoFilters {
@@ -69,7 +69,8 @@ export function usePhotos(filters: PhotoFilters) {
   }
 
   function getPhotoUrl(id: string): string {
-    return `/api/photos/${id}/full`;
+    const token = getTokens()?.accessToken ?? '';
+    return `/api/photos/${id}/full?token=${encodeURIComponent(token)}`;
   }
 
   return {
@@ -92,5 +93,6 @@ export function usePhoto(id: string | undefined) {
 
 /** Helper to get a photo URL by ID (no hook needed) */
 export function getPhotoUrl(id: string): string {
-  return `/api/photos/${id}/full`;
+  const token = getTokens()?.accessToken ?? '';
+  return `/api/photos/${id}/full?token=${encodeURIComponent(token)}`;
 }
