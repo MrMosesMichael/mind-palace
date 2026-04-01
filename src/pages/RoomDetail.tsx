@@ -1,12 +1,13 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
 import { useRoom, useRooms } from '../hooks/useRooms';
 import { getModule } from '../modules';
 import { getScheduleStatus } from '../services/reminderService';
 import { lore } from '../lib/lore';
-import { db } from '../db';
+import { apiGet } from '../services/api';
+import type { Schedule, TaskLog, Procedure, Reference, Photo, Note, Inventory } from '../types';
 import styles from './RoomDetail.module.css';
 
 interface TileProps {
@@ -48,56 +49,61 @@ export function RoomDetail() {
   const { deleteRoom } = useRooms();
   const navigate = useNavigate();
 
-  // Live data counts
-  const scheduleCounts = useLiveQuery(async () => {
-    if (!roomId) return { total: 0, overdue: 0, dueSoon: 0 };
-    const schedules = await db.schedules.where('roomId').equals(roomId).filter((s) => s.isActive).toArray();
-    let overdue = 0;
-    let dueSoon = 0;
+  const { data: schedules = [] } = useQuery({
+    queryKey: ['schedules', { roomId }],
+    queryFn: () => apiGet<Schedule[]>(`/api/crud/schedules?roomId=${roomId}&isActive=true`),
+    enabled: !!roomId,
+  });
+
+  const scheduleCounts = (() => {
+    let overdue = 0, dueSoon = 0;
     for (const s of schedules) {
       const status = getScheduleStatus(s, room);
       if (status === 'overdue') overdue++;
       else if (status === 'due_soon') dueSoon++;
     }
     return { total: schedules.length, overdue, dueSoon };
-  }, [roomId, room]);
+  })();
 
-  const logCount = useLiveQuery(
-    () => roomId ? db.taskLogs.where('roomId').equals(roomId).count() : Promise.resolve(0),
-    [roomId]
-  ) ?? 0;
+  const { data: logs = [] } = useQuery({
+    queryKey: ['taskLogs', { roomId }],
+    queryFn: () => apiGet<TaskLog[]>(`/api/crud/taskLogs?roomId=${roomId}`),
+    enabled: !!roomId,
+  });
 
-  const procedureCount = useLiveQuery(
-    () => roomId ? db.procedures.where('roomId').equals(roomId).count() : Promise.resolve(0),
-    [roomId]
-  ) ?? 0;
+  const { data: procedures = [] } = useQuery({
+    queryKey: ['procedures', { roomId }],
+    queryFn: () => apiGet<Procedure[]>(`/api/crud/procedures?roomId=${roomId}`),
+    enabled: !!roomId,
+  });
 
-  const referenceCount = useLiveQuery(
-    () => roomId ? db.references.where('roomId').equals(roomId).count() : Promise.resolve(0),
-    [roomId]
-  ) ?? 0;
+  const { data: references = [] } = useQuery({
+    queryKey: ['references', { roomId }],
+    queryFn: () => apiGet<Reference[]>(`/api/crud/references?roomId=${roomId}`),
+    enabled: !!roomId,
+  });
 
-  const photoCount = useLiveQuery(
-    () => roomId ? db.photos.where('roomId').equals(roomId).count() : Promise.resolve(0),
-    [roomId]
-  ) ?? 0;
+  const { data: photos = [] } = useQuery({
+    queryKey: ['photos', { roomId }],
+    queryFn: () => apiGet<Photo[]>(`/api/crud/photos?roomId=${roomId}`),
+    enabled: !!roomId,
+  });
 
-  const noteCount = useLiveQuery(
-    () => roomId ? db.notes.where('roomId').equals(roomId).count() : Promise.resolve(0),
-    [roomId]
-  ) ?? 0;
+  const { data: notes = [] } = useQuery({
+    queryKey: ['notes', { roomId }],
+    queryFn: () => apiGet<Note[]>(`/api/crud/notes?roomId=${roomId}`),
+    enabled: !!roomId,
+  });
 
-  const inventoryCounts = useLiveQuery(async () => {
-    if (!roomId) return { total: 0, lowStock: 0 };
-    const items = await db.inventory.where('roomId').equals(roomId).toArray();
-    let lowStock = 0;
-    for (const item of items) {
-      if (item.minQuantity != null && item.quantity <= item.minQuantity) {
-        lowStock++;
-      }
-    }
-    return { total: items.length, lowStock };
-  }, [roomId]);
+  const { data: inventoryItems = [] } = useQuery({
+    queryKey: ['inventory', { roomId }],
+    queryFn: () => apiGet<Inventory[]>(`/api/crud/inventory?roomId=${roomId}`),
+    enabled: !!roomId,
+  });
+
+  const inventoryLowStock = inventoryItems.filter(
+    (item) => item.minQuantity != null && item.quantity <= item.minQuantity
+  ).length;
 
   if (!room) {
     return (
@@ -129,10 +135,9 @@ export function RoomDetail() {
 
   const basePath = palaceId ? `/palace/${palaceId}/room/${room.id}` : `/room/${room.id}`;
 
-  // Schedule badge
-  const scheduleBadge = scheduleCounts && scheduleCounts.overdue > 0
+  const scheduleBadge = scheduleCounts.overdue > 0
     ? { text: `${scheduleCounts.overdue} overdue`, type: 'overdue' as const }
-    : scheduleCounts && scheduleCounts.dueSoon > 0
+    : scheduleCounts.dueSoon > 0
     ? { text: `${scheduleCounts.dueSoon} due soon`, type: 'due-soon' as const }
     : null;
 
@@ -171,7 +176,7 @@ export function RoomDetail() {
             icon={'\uD83D\uDCC5'}
             description="Recurring tasks & intervals"
             to={`${basePath}/schedules`}
-            count={scheduleCounts?.total}
+            count={scheduleCounts.total}
             badge={scheduleBadge}
           />
           <Tile
@@ -179,38 +184,38 @@ export function RoomDetail() {
             icon={'\uD83D\uDCCB'}
             description="What's been done"
             to={`${basePath}/log`}
-            count={logCount}
+            count={logs.length}
           />
           <Tile
             label={isKitchen ? lore.recipes.title : lore.procedures.title}
             icon={isKitchen ? '\uD83C\uDF73' : '\uD83D\uDDC4'}
             description={isKitchen ? 'Recipes & cooking guides' : 'Step-by-step how-tos'}
             to={`${basePath}/procedures`}
-            count={procedureCount}
+            count={procedures.length}
           />
           <Tile
             label={lore.references.title}
             icon={'\uD83D\uDCDA'}
             description="Links & resources"
             to={`${basePath}/references`}
-            count={referenceCount}
+            count={references.length}
           />
           <Tile
             label={lore.photos.title}
             icon={'\uD83D\uDCF7'}
             description="Photos & documentation"
             to={`${basePath}/photos`}
-            count={photoCount}
+            count={photos.length}
           />
           <Tile
             label={lore.inventory.title}
             icon={'\uD83D\uDD29'}
             description="Parts & supplies on hand"
             to={`${basePath}/inventory`}
-            count={inventoryCounts?.total}
+            count={inventoryItems.length}
             badge={
-              inventoryCounts && inventoryCounts.lowStock > 0
-                ? { text: `${inventoryCounts.lowStock} low`, type: 'due-soon' as const }
+              inventoryLowStock > 0
+                ? { text: `${inventoryLowStock} low`, type: 'due-soon' as const }
                 : null
             }
           />
@@ -219,7 +224,7 @@ export function RoomDetail() {
             icon={'\uD83D\uDCDD'}
             description="Freeform notes & observations"
             to={`${basePath}/notes`}
-            count={noteCount}
+            count={notes.length}
           />
         </div>
 

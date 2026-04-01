@@ -1,38 +1,37 @@
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { apiGet, apiPost, apiPut, apiDelete } from '../services/api';
 import type { RoomHotspot } from '../types';
-import { nowISO } from '../lib/formatters';
 
 export function useRoomHotspots(palaceId: number | undefined) {
-  const hotspots = useLiveQuery(
-    () =>
-      palaceId
-        ? db.roomHotspots.where('palaceId').equals(palaceId).toArray()
-        : Promise.resolve([] as RoomHotspot[]),
-    [palaceId]
-  );
+  const queryClient = useQueryClient();
+
+  const { data: hotspots = [] } = useQuery({
+    queryKey: ['roomHotspots', { palaceId }],
+    queryFn: () =>
+      apiGet<RoomHotspot[]>(`/api/crud/roomHotspots?palaceId=${palaceId}`),
+    enabled: !!palaceId,
+  });
 
   async function addHotspot(
     hotspot: Omit<RoomHotspot, 'id' | 'createdAt' | 'updatedAt'>
   ): Promise<number> {
-    const now = nowISO();
-    return db.roomHotspots.add({
-      ...hotspot,
-      createdAt: now,
-      updatedAt: now,
-    } as RoomHotspot);
+    const { id } = await apiPost<{ id: number }>('/api/crud/roomHotspots', hotspot);
+    queryClient.invalidateQueries({ queryKey: ['roomHotspots'] });
+    return id;
   }
 
   async function updateHotspot(id: number, changes: Partial<RoomHotspot>) {
-    await db.roomHotspots.update(id, { ...changes, updatedAt: nowISO() });
+    await apiPut(`/api/crud/roomHotspots/${id}`, changes);
+    queryClient.invalidateQueries({ queryKey: ['roomHotspots'] });
   }
 
   async function deleteHotspot(id: number) {
-    await db.roomHotspots.delete(id);
+    await apiDelete(`/api/crud/roomHotspots/${id}`);
+    queryClient.invalidateQueries({ queryKey: ['roomHotspots'] });
   }
 
   return {
-    hotspots: hotspots ?? [],
+    hotspots,
     addHotspot,
     updateHotspot,
     deleteHotspot,

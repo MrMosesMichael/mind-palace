@@ -11,6 +11,7 @@ import userRoutes from './routes/users.js';
 import syncRoutes from './routes/sync.js';
 import photoRoutes from './routes/photos.js';
 import backupRoutes from './routes/backup.js';
+import crudRoutes from './routes/crud.js';
 import { backupDatabase } from './services/backup.js';
 
 // Catch silent crashes
@@ -64,6 +65,7 @@ app.use('/api/users', userRoutes);
 app.use('/api/sync', syncRoutes);
 app.use('/api/photos', photoRoutes);
 app.use('/api/backup', backupRoutes);
+app.use('/api/crud', crudRoutes);
 
 // Serve PWA static files (built frontend)
 // In production, the built PWA files are copied into dist/public

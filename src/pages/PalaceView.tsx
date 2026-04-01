@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
 import { RoomCard } from '../components/room/RoomCard';
 import { HotspotOverlay } from '../components/palace/HotspotOverlay';
@@ -14,56 +14,62 @@ import { useRoomHotspots } from '../hooks/useRoomHotspots';
 import { lore, getRandomTip } from '../lib/lore';
 import { getAllModules, getModuleIcon, getModuleColor } from '../modules';
 import { getScheduleStatus, type ScheduleStatus } from '../services/reminderService';
-import { getPhotoUrl } from '../services/photoStorage';
-import { db } from '../db';
+import { getPhotoUrl } from '../hooks/usePhotos';
+import { apiGet } from '../services/api';
 import { todayISO } from '../lib/formatters';
+import type { Room, Schedule, TaskLog } from '../types';
 import styles from './PalaceView.module.css';
 
 function PalaceStats({ palaceId }: { palaceId: number }) {
-  const roomCount = useLiveQuery(
-    () => db.rooms.where('palaceId').equals(palaceId).filter((r) => !r.isArchived).count(),
-    [palaceId]
-  ) ?? 0;
+  const { data: rooms = [] } = useQuery({
+    queryKey: ['rooms', { palaceId }],
+    queryFn: () => apiGet<Room[]>(`/api/crud/rooms?palaceId=${palaceId}&isArchived=false`),
+  });
 
-  const scheduleCount = useLiveQuery(
-    async () => {
-      const rooms = await db.rooms.where('palaceId').equals(palaceId).toArray();
-      const roomIds = rooms.map((r) => r.id!);
-      let count = 0;
+  const roomIds = useMemo(() => rooms.map((r) => r.id!), [rooms]);
+
+  const { data: schedules = [] } = useQuery({
+    queryKey: ['palace-schedules', palaceId],
+    queryFn: async () => {
+      const all: Schedule[] = [];
       for (const rid of roomIds) {
-        count += await db.schedules.where('roomId').equals(rid).filter((s) => s.isActive).count();
+        const s = await apiGet<Schedule[]>(`/api/crud/schedules?roomId=${rid}&isActive=true`);
+        all.push(...s);
       }
-      return count;
+      return all;
     },
-    [palaceId]
-  ) ?? 0;
+    enabled: roomIds.length > 0,
+  });
 
   const today = todayISO();
   const monthStart = today.slice(0, 7) + '-01';
-  const tasksThisMonth = useLiveQuery(
-    async () => {
-      const rooms = await db.rooms.where('palaceId').equals(palaceId).toArray();
-      const roomIds = new Set(rooms.map((r) => r.id!));
-      const logs = await db.taskLogs.filter((t) => t.date >= monthStart && roomIds.has(t.roomId)).count();
-      return logs;
+  const { data: taskLogs = [] } = useQuery({
+    queryKey: ['palace-tasks-month', palaceId, monthStart],
+    queryFn: async () => {
+      const all: TaskLog[] = [];
+      for (const rid of roomIds) {
+        const logs = await apiGet<TaskLog[]>(`/api/crud/taskLogs?roomId=${rid}`);
+        all.push(...logs.filter((t) => t.date >= monthStart));
+      }
+      return all;
     },
-    [palaceId, monthStart]
-  ) ?? 0;
+    enabled: roomIds.length > 0,
+  });
 
   return (
     <div className={styles.statsStrip}>
       <div className={styles.stat}>
-        <span className={styles.statValue}>{roomCount}</span>
+        <span className={styles.statValue}>{rooms.length}</span>
         <span className={styles.statLabel}>Rooms</span>
       </div>
       <div className={styles.statDivider} />
       <div className={styles.stat}>
-        <span className={styles.statValue}>{scheduleCount}</span>
+        <span className={styles.statValue}>{schedules.length}</span>
         <span className={styles.statLabel}>Schedules</span>
       </div>
       <div className={styles.statDivider} />
       <div className={styles.stat}>
-        <span className={styles.statValue}>{tasksThisMonth}</span>
+        <span className={styles.statValue}>{taskLogs.length}</span>
         <span className={styles.statLabel}>Done this month</span>
       </div>
     </div>
@@ -73,13 +79,28 @@ function PalaceStats({ palaceId }: { palaceId: number }) {
 function PalaceUpcomingWeek({ palaceId }: { palaceId: number }) {
   const navigate = useNavigate();
 
-  const weekData = useLiveQuery(async () => {
-    const rooms = await db.rooms.where('palaceId').equals(palaceId).filter((r) => !r.isArchived).toArray();
-    const roomMap = new Map(rooms.map((r) => [r.id!, r]));
-    const roomIds = new Set(rooms.map((r) => r.id!));
+  const { data: rooms = [] } = useQuery({
+    queryKey: ['rooms', { palaceId }],
+    queryFn: () => apiGet<Room[]>(`/api/crud/rooms?palaceId=${palaceId}&isArchived=false`),
+  });
 
-    const schedules = await db.schedules.filter((s) => s.isActive && roomIds.has(s.roomId)).toArray();
+  const roomIds = useMemo(() => rooms.map((r) => r.id!), [rooms]);
+  const roomMap = useMemo(() => new Map(rooms.map((r) => [r.id!, r])), [rooms]);
 
+  const { data: schedules = [] } = useQuery({
+    queryKey: ['palace-schedules', palaceId],
+    queryFn: async () => {
+      const all: Schedule[] = [];
+      for (const rid of roomIds) {
+        const s = await apiGet<Schedule[]>(`/api/crud/schedules?roomId=${rid}&isActive=true`);
+        all.push(...s);
+      }
+      return all;
+    },
+    enabled: roomIds.length > 0,
+  });
+
+  const weekData = useMemo(() => {
     const now = new Date();
     const days: Array<{
       dateStr: string;
@@ -123,11 +144,10 @@ function PalaceUpcomingWeek({ palaceId }: { palaceId: number }) {
 
       days.push({ dateStr, label: dayLabel, dayNum: d.getDate(), isToday: i === 0, tasks });
     }
-
     return days;
-  }, [palaceId]);
+  }, [schedules, roomMap]);
 
-  if (!weekData || weekData.every((d) => d.tasks.length === 0)) return null;
+  if (weekData.every((d) => d.tasks.length === 0)) return null;
 
   return (
     <section className={styles.weekSection}>
@@ -164,14 +184,29 @@ function PalaceUpcomingWeek({ palaceId }: { palaceId: number }) {
 function PalaceDreamcatcher({ palaceId }: { palaceId: number }) {
   const navigate = useNavigate();
 
-  const urgentReminders = useLiveQuery(async () => {
-    const rooms = await db.rooms.where('palaceId').equals(palaceId).filter((r) => !r.isArchived).toArray();
-    const roomMap = new Map(rooms.map((r) => [r.id!, r]));
-    const roomIds = new Set(rooms.map((r) => r.id!));
+  const { data: rooms = [] } = useQuery({
+    queryKey: ['rooms', { palaceId }],
+    queryFn: () => apiGet<Room[]>(`/api/crud/rooms?palaceId=${palaceId}&isArchived=false`),
+  });
 
-    const schedules = await db.schedules.filter((s) => s.isActive && roomIds.has(s.roomId)).toArray();
+  const roomIds = useMemo(() => rooms.map((r) => r.id!), [rooms]);
+  const roomMap = useMemo(() => new Map(rooms.map((r) => [r.id!, r])), [rooms]);
 
-    const items: Array<{ schedule: typeof schedules[0]; room: typeof rooms[0]; status: ScheduleStatus }> = [];
+  const { data: schedules = [] } = useQuery({
+    queryKey: ['palace-schedules', palaceId],
+    queryFn: async () => {
+      const all: Schedule[] = [];
+      for (const rid of roomIds) {
+        const s = await apiGet<Schedule[]>(`/api/crud/schedules?roomId=${rid}&isActive=true`);
+        all.push(...s);
+      }
+      return all;
+    },
+    enabled: roomIds.length > 0,
+  });
+
+  const urgentReminders = useMemo(() => {
+    const items: Array<{ schedule: Schedule; room: Room; status: ScheduleStatus }> = [];
     for (const s of schedules) {
       const room = roomMap.get(s.roomId);
       if (!room) continue;
@@ -180,17 +215,15 @@ function PalaceDreamcatcher({ palaceId }: { palaceId: number }) {
         items.push({ schedule: s, room, status });
       }
     }
-
     items.sort((a, b) => {
       if (a.status === 'overdue' && b.status !== 'overdue') return -1;
       if (a.status !== 'overdue' && b.status === 'overdue') return 1;
       return 0;
     });
-
     return items;
-  }, [palaceId]);
+  }, [schedules, roomMap]);
 
-  if (!urgentReminders || urgentReminders.length === 0) return null;
+  if (urgentReminders.length === 0) return null;
 
   const overdue = urgentReminders.filter((r) => r.status === 'overdue').length;
   const dueSoon = urgentReminders.filter((r) => r.status === 'due_soon').length;
@@ -237,28 +270,10 @@ export function PalaceView() {
   const [tip] = useState(() => getRandomTip());
   const [isEditingHotspots, setIsEditingHotspots] = useState(false);
 
-  // Palace artwork URL — prefer imageId (photo storage), fall back to imageUrl (static)
-  const [artworkUrl, setArtworkUrl] = useState<string | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    async function loadArtwork() {
-      if (palace.imageId) {
-        try {
-          const url = await getPhotoUrl(palace.imageId);
-          if (!cancelled) { setArtworkUrl(url); return; }
-        } catch {
-          // fall through to imageUrl
-        }
-      }
-      if (palace.imageUrl) {
-        if (!cancelled) setArtworkUrl(palace.imageUrl);
-      } else {
-        if (!cancelled) setArtworkUrl(null);
-      }
-    }
-    loadArtwork();
-    return () => { cancelled = true; };
-  }, [palace.imageId, palace.imageUrl]);
+  // Palace artwork URL — prefer imageId (server photo), fall back to imageUrl (static)
+  const artworkUrl = palace.imageId
+    ? getPhotoUrl(palace.imageId)
+    : palace.imageUrl ?? null;
 
   // Group rooms by module type for fallback view
   const grouped = modules
@@ -268,7 +283,7 @@ export function PalaceView() {
     }))
     .filter((g) => g.rooms.length > 0);
 
-  const hasArtwork = !!(palace.imageId || palace.imageUrl) && !!artworkUrl;
+  const hasArtwork = !!artworkUrl;
 
   return (
     <div className={styles.page}>

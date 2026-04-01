@@ -1,9 +1,9 @@
 import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useLiveQuery } from 'dexie-react-hooks';
-import type { RoomHotspot, Room } from '../../types';
+import { useQuery } from '@tanstack/react-query';
+import type { RoomHotspot, Room, Schedule } from '../../types';
 import { getScheduleStatus } from '../../services/reminderService';
-import { db } from '../../db';
+import { apiGet } from '../../services/api';
 import styles from './HotspotOverlay.module.css';
 
 interface HotspotOverlayProps {
@@ -23,22 +23,19 @@ function HotspotItem({
 }) {
   const navigate = useNavigate();
 
-  // Count overdue/due-soon for this room
-  const urgentCount = useLiveQuery(async () => {
-    if (!room?.id) return 0;
-    const schedules = await db.schedules
-      .where('roomId')
-      .equals(room.id)
-      .filter((s) => s.isActive)
-      .toArray();
-
-    let count = 0;
-    for (const s of schedules) {
-      const status = getScheduleStatus(s, room);
-      if (status === 'overdue' || status === 'due_soon') count++;
-    }
-    return count;
-  }, [room?.id]);
+  const { data: urgentCount = 0 } = useQuery({
+    queryKey: ['hotspot-urgent', room?.id],
+    queryFn: async () => {
+      const schedules = await apiGet<Schedule[]>(`/api/crud/schedules?roomId=${room!.id}&isActive=true`);
+      let count = 0;
+      for (const s of schedules) {
+        const status = getScheduleStatus(s, room);
+        if (status === 'overdue' || status === 'due_soon') count++;
+      }
+      return count;
+    },
+    enabled: !!room?.id,
+  });
 
   const isGarage = room?.moduleType === 'garage';
   const meta = room?.metadata as Record<string, string | number> | undefined;
@@ -62,7 +59,7 @@ function HotspotItem({
       title={label}
     >
       <span className={styles.hotspotLabel}>{label}</span>
-      {(urgentCount ?? 0) > 0 && (
+      {urgentCount > 0 && (
         <span className={styles.hotspotBadge}>{urgentCount}</span>
       )}
       {isGarage && meta && (

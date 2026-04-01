@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
 import { RoomCard } from '../components/room/RoomCard';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -8,33 +8,42 @@ import { Button } from '../components/ui/Button';
 import { useRooms } from '../hooks/useRooms';
 import { useAllReminders, useUrgentReminders } from '../hooks/useReminders';
 import { useSchedules } from '../hooks/useSchedules';
+import { useTaskLogs } from '../hooks/useTaskLogs';
 import { ScheduleCard } from '../components/schedule/ScheduleCard';
 import { lore, getRandomTip, getGreeting } from '../lib/lore';
 import { getAllModules, getModuleIcon, getModuleColor } from '../modules';
-import { db } from '../db';
+import { apiGet } from '../services/api';
 import { todayISO } from '../lib/formatters';
+import type { Room, Schedule, TaskLog } from '../types';
 import type { ScheduleStatus } from '../services/reminderService';
 import styles from './Dashboard.module.css';
 
 function StatsStrip() {
-  const roomCount = useLiveQuery(() => db.rooms.filter((r) => !r.isArchived).count()) ?? 0;
-  const scheduleCount = useLiveQuery(() => db.schedules.filter((s) => s.isActive).count()) ?? 0;
+  const { data: rooms = [] } = useQuery({
+    queryKey: ['rooms'],
+    queryFn: () => apiGet<Room[]>('/api/crud/rooms?isArchived=false'),
+  });
+  const { data: schedules = [] } = useQuery({
+    queryKey: ['schedules', { active: true }],
+    queryFn: () => apiGet<Schedule[]>('/api/crud/schedules?isActive=true'),
+  });
   const today = todayISO();
   const monthStart = today.slice(0, 7) + '-01';
-  const tasksThisMonth = useLiveQuery(
-    () => db.taskLogs.filter((t) => t.date >= monthStart).count(),
-    [monthStart]
-  ) ?? 0;
+  const { data: allLogs = [] } = useQuery({
+    queryKey: ['taskLogs', { month: monthStart }],
+    queryFn: () => apiGet<TaskLog[]>('/api/crud/taskLogs'),
+  });
+  const tasksThisMonth = allLogs.filter((t) => t.date >= monthStart).length;
 
   return (
     <div className={styles.statsStrip}>
       <div className={styles.stat}>
-        <span className={styles.statValue}>{roomCount}</span>
+        <span className={styles.statValue}>{rooms.length}</span>
         <span className={styles.statLabel}>Rooms</span>
       </div>
       <div className={styles.statDivider} />
       <div className={styles.stat}>
-        <span className={styles.statValue}>{scheduleCount}</span>
+        <span className={styles.statValue}>{schedules.length}</span>
         <span className={styles.statLabel}>Schedules</span>
       </div>
       <div className={styles.statDivider} />
@@ -153,6 +162,7 @@ interface QuickCompleteProps {
 
 function QuickComplete({ scheduleId, roomId, onComplete }: QuickCompleteProps) {
   const { completeSchedule } = useSchedules(roomId);
+  const { addTaskLog } = useTaskLogs(roomId);
   const [completing, setCompleting] = useState(false);
 
   async function handleComplete(e: React.MouseEvent) {
@@ -160,15 +170,13 @@ function QuickComplete({ scheduleId, roomId, onComplete }: QuickCompleteProps) {
     setCompleting(true);
     try {
       await completeSchedule(scheduleId, new Date().toISOString().split('T')[0]);
-      await db.taskLogs.add({
+      await addTaskLog({
         roomId,
         scheduleId,
         title: 'Quick completion from dashboard',
         date: new Date().toISOString().split('T')[0],
         performedBy: 'self',
         photoIds: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
       });
       onComplete();
     } catch {

@@ -1,19 +1,17 @@
 import { useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useLiveQuery } from 'dexie-react-hooks';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
 import { PhotoThumbnail } from '../components/photo/PhotoThumbnail';
 import { RecipeDetail } from '../components/recipe/RecipeDetail';
 import { useProcedure, useProcedureSteps, useSupplies } from '../hooks/useProcedures';
+import { useProcedureReferences } from '../hooks/useReferences';
+import { usePhotos } from '../hooks/usePhotos';
 import { useRoom } from '../hooks/useRooms';
 import { getModule } from '../modules';
-import { savePhoto } from '../services/photoStorage';
 import { DIFFICULTY_LABELS } from '../lib/constants';
-import type { Reference } from '../types';
 import { lore } from '../lib/lore';
-import { db } from '../db';
 import styles from './ProcedureDetail.module.css';
 
 export function ProcedureDetail() {
@@ -27,6 +25,8 @@ export function ProcedureDetail() {
   const mod = room ? getModule(room.moduleType) : undefined;
   const navigate = useNavigate();
   const heroPhotoInputRef = useRef<HTMLInputElement>(null);
+  const { addPhoto } = usePhotos({ roomId, procedureId });
+  const { references } = useProcedureReferences(procedureId);
 
   async function handleHeroPhotoAdd() {
     heroPhotoInputRef.current?.click();
@@ -35,17 +35,9 @@ export function ProcedureDetail() {
   async function handleHeroPhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = e.target.files;
     if (!files || files.length === 0 || !roomId || !procedureId) return;
-    await savePhoto(files[0], { roomId, procedureId });
+    await addPhoto(files[0], {});
     e.target.value = '';
   }
-
-  // Get references for recipe view
-  const references = useLiveQuery(
-    () => procedureId
-      ? db.references.where('procedureId').equals(procedureId).toArray()
-      : Promise.resolve([] as Reference[]),
-    [procedureId]
-  ) ?? [];
 
   if (!procedure) {
     return (

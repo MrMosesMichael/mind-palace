@@ -1,6 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import { login as apiLogin, logout as apiLogout, isAuthenticated, getUser, clearTokens } from '../services/apiClient';
-import { pullSync } from '../services/syncService';
 
 interface User {
   id: number;
@@ -29,8 +28,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const storedUser = getUser();
       if (storedUser) {
         setUser(storedUser);
-        // Pull latest data from server
-        pullSync().catch(console.error);
       } else {
         clearTokens();
       }
@@ -41,8 +38,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (username: string, password: string) => {
     const userData = await apiLogin(username, password);
     setUser(userData);
-    // Pull all data after login
-    await pullSync();
   }, []);
 
   const logout = useCallback(async () => {

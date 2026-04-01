@@ -1,6 +1,5 @@
 import { useLocation, useNavigate } from 'react-router-dom';
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../../db';
+import { usePalace } from '../../hooks/usePalaces';
 import styles from './DesktopNav.module.css';
 
 function getPalaceIdFromPath(pathname: string): string | null {
@@ -12,13 +11,10 @@ export function DesktopNav() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const palaceId = getPalaceIdFromPath(location.pathname);
-  const insidePalace = !!palaceId;
+  const palaceIdStr = getPalaceIdFromPath(location.pathname);
+  const insidePalace = !!palaceIdStr;
 
-  const palace = useLiveQuery(
-    () => (palaceId ? db.palaces.get(Number(palaceId)) : undefined),
-    [palaceId]
-  );
+  const { palace } = usePalace(palaceIdStr ? Number(palaceIdStr) : undefined);
 
   const tabs = [
     { path: '/', label: 'Palaces', icon: '\uD83C\uDFDB' },
@@ -27,7 +23,7 @@ export function DesktopNav() {
     { path: '/settings', label: 'Settings', icon: '\u2699' },
   ];
 
-  const addRoomPath = insidePalace ? `/palace/${palaceId}/room/new` : '/palace/new';
+  const addRoomPath = insidePalace ? `/palace/${palaceIdStr}/room/new` : '/palace/new';
   const addRoomLabel = insidePalace ? '+ Room' : '+ Palace';
 
   return (
@@ -40,7 +36,7 @@ export function DesktopNav() {
         {insidePalace && palace && (
           <button
             className={styles.palaceName}
-            onClick={() => navigate(`/palace/${palaceId}`)}
+            onClick={() => navigate(`/palace/${palaceIdStr}`)}
           >
             {palace.name}
           </button>

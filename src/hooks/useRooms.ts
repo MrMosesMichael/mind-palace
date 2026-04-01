@@ -1,58 +1,57 @@
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { apiGet, apiPost, apiPut, apiDelete } from '../services/api';
 import type { Room } from '../types';
-import { nowISO } from '../lib/formatters';
 
 export function useRooms() {
-  const rooms = useLiveQuery(() => db.rooms.filter((r) => !r.isArchived).sortBy('updatedAt'));
-  const archivedRooms = useLiveQuery(() => db.rooms.filter((r) => r.isArchived).toArray());
+  const queryClient = useQueryClient();
 
-  async function addRoom(room: Omit<Room, 'id' | 'createdAt' | 'updatedAt' | 'isArchived'>): Promise<number> {
-    const now = nowISO();
-    return db.rooms.add({
+  const { data: allRooms = [] } = useQuery({
+    queryKey: ['rooms'],
+    queryFn: () => apiGet<Room[]>('/api/crud/rooms'),
+  });
+
+  const rooms = allRooms.filter((r) => !r.isArchived);
+  const archivedRooms = allRooms.filter((r) => r.isArchived);
+
+  async function addRoom(
+    room: Omit<Room, 'id' | 'createdAt' | 'updatedAt' | 'isArchived'>
+  ): Promise<number> {
+    const { id } = await apiPost<{ id: number }>('/api/crud/rooms', {
       ...room,
       isArchived: false,
-      createdAt: now,
-      updatedAt: now,
-    } as Room);
+    });
+    queryClient.invalidateQueries({ queryKey: ['rooms'] });
+    return id;
   }
 
   async function updateRoom(id: number, changes: Partial<Room>) {
-    await db.rooms.update(id, { ...changes, updatedAt: nowISO() });
+    await apiPut(`/api/crud/rooms/${id}`, changes);
+    queryClient.invalidateQueries({ queryKey: ['rooms'] });
+    queryClient.invalidateQueries({ queryKey: ['rooms', id] });
   }
 
   async function archiveRoom(id: number) {
-    await db.rooms.update(id, { isArchived: true, updatedAt: nowISO() });
+    await apiPut(`/api/crud/rooms/${id}`, { isArchived: true });
+    queryClient.invalidateQueries({ queryKey: ['rooms'] });
+    queryClient.invalidateQueries({ queryKey: ['rooms', id] });
   }
 
   async function deleteRoom(id: number) {
-    await db.transaction('rw', [db.rooms, db.schedules, db.taskLogs, db.procedures, db.procedureSteps, db.supplies, db.references, db.photos, db.notes, db.reminders, db.inventory, db.roomHotspots], async () => {
-      const procedureIds = (await db.procedures.where('roomId').equals(id).toArray()).map(p => p.id!);
-
-      // Delete procedure children
-      for (const pid of procedureIds) {
-        await db.procedureSteps.where('procedureId').equals(pid).delete();
-        await db.supplies.where('procedureId').equals(pid).delete();
-      }
-
-      // Delete room children
-      await db.schedules.where('roomId').equals(id).delete();
-      await db.taskLogs.where('roomId').equals(id).delete();
-      await db.procedures.where('roomId').equals(id).delete();
-      await db.references.where('roomId').equals(id).delete();
-      await db.notes.where('roomId').equals(id).delete();
-      await db.reminders.where('roomId').equals(id).delete();
-      await db.inventory.where('roomId').equals(id).delete();
-      await db.photos.where('roomId').equals(id).delete();
-      // Delete any hotspots pointing to this room
-      await db.roomHotspots.where('roomId').equals(id).delete();
-      await db.rooms.delete(id);
-    });
+    await apiDelete(`/api/crud/rooms/${id}`);
+    queryClient.invalidateQueries({ queryKey: ['rooms'] });
+    queryClient.invalidateQueries({ queryKey: ['schedules'] });
+    queryClient.invalidateQueries({ queryKey: ['taskLogs'] });
+    queryClient.invalidateQueries({ queryKey: ['procedures'] });
+    queryClient.invalidateQueries({ queryKey: ['references'] });
+    queryClient.invalidateQueries({ queryKey: ['notes'] });
+    queryClient.invalidateQueries({ queryKey: ['inventory'] });
+    queryClient.invalidateQueries({ queryKey: ['photos'] });
+    queryClient.invalidateQueries({ queryKey: ['roomHotspots'] });
   }
 
   return {
-    rooms: rooms ?? [],
-    archivedRooms: archivedRooms ?? [],
+    rooms,
+    archivedRooms,
     addRoom,
     updateRoom,
     archiveRoom,
@@ -61,24 +60,19 @@ export function useRooms() {
 }
 
 export function useRoom(id: number | undefined) {
-  const room = useLiveQuery(
-    () => (id ? db.rooms.get(id) : undefined),
-    [id]
-  );
+  const { data: room } = useQuery({
+    queryKey: ['rooms', id],
+    queryFn: () => apiGet<Room>(`/api/crud/rooms/${id}`),
+    enabled: !!id,
+  });
   return room;
 }
 
 export function usePalaceRooms(palaceId: number | undefined) {
-  const rooms = useLiveQuery(
-    () =>
-      palaceId
-        ? db.rooms
-            .where('palaceId')
-            .equals(palaceId)
-            .filter((r) => !r.isArchived)
-            .sortBy('updatedAt')
-        : Promise.resolve([] as Room[]),
-    [palaceId]
-  );
-  return rooms ?? [];
+  const { data: rooms = [] } = useQuery({
+    queryKey: ['rooms', { palaceId }],
+    queryFn: () => apiGet<Room[]>(`/api/crud/rooms?palaceId=${palaceId}`),
+    enabled: !!palaceId,
+  });
+  return rooms.filter((r) => !r.isArchived);
 }

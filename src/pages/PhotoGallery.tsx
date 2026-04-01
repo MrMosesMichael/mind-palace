@@ -80,33 +80,15 @@ export function PhotoGallery() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Load full-resolution image when viewingIndex changes
+  // Set full-resolution image URL when viewingIndex changes
   useEffect(() => {
     if (viewingPhoto === null || viewingPhoto === undefined) {
-      if (fullUrl) {
-        URL.revokeObjectURL(fullUrl);
-        setFullUrl(null);
-      }
+      setFullUrl(null);
       return;
     }
 
-    let cancelled = false;
-    setIsLoadingFull(true);
-
-    getPhotoUrl(viewingPhoto.id).then((url) => {
-      if (!cancelled) {
-        // Revoke old URL
-        if (fullUrl) URL.revokeObjectURL(fullUrl);
-        setFullUrl(url);
-        setIsLoadingFull(false);
-      } else {
-        URL.revokeObjectURL(url);
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
+    setFullUrl(getPhotoUrl(viewingPhoto.id));
+    setIsLoadingFull(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewingIndex, viewingPhoto?.id]);
 

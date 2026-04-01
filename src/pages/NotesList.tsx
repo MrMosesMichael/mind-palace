@@ -7,7 +7,7 @@ import { Input } from '../components/ui/Input';
 import { PhotoThumbnail } from '../components/photo/PhotoThumbnail';
 import { useNotes } from '../hooks/useNotes';
 import { useRoom } from '../hooks/useRooms';
-import { savePhoto } from '../services/photoStorage';
+import { apiFetch } from '../services/apiClient';
 import { formatDate } from '../lib/formatters';
 import { lore } from '../lib/lore';
 import styles from './NotesList.module.css';
@@ -50,7 +50,13 @@ export function NotesList() {
         const existingPhotoIds = existingNote?.photoIds ?? [];
         const newPhotoIds: string[] = [...existingPhotoIds];
         for (const file of pendingPhotos) {
-          const photo = await savePhoto(file, { roomId, noteId: editingId });
+          const formData = new FormData();
+          formData.append('file', file);
+          formData.append('roomId', String(roomId));
+          formData.append('noteId', String(editingId));
+          const res = await apiFetch('/api/photos/upload', { method: 'POST', body: formData });
+          if (!res.ok) throw new Error('Upload failed');
+          const photo = await res.json();
           newPhotoIds.push(photo.id);
         }
         await updateNote(editingId, {
@@ -76,7 +82,13 @@ export function NotesList() {
       if (pendingPhotos.length > 0) {
         const photoIds: string[] = [];
         for (const file of pendingPhotos) {
-          const photo = await savePhoto(file, { roomId, noteId });
+          const formData = new FormData();
+          formData.append('file', file);
+          formData.append('roomId', String(roomId));
+          formData.append('noteId', String(noteId));
+          const res = await apiFetch('/api/photos/upload', { method: 'POST', body: formData });
+          if (!res.ok) throw new Error('Upload failed');
+          const photo = await res.json();
           photoIds.push(photo.id);
         }
         await updateNote(noteId, { photoIds });

@@ -1,6 +1,6 @@
 import { useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
 import { PalaceCard } from '../components/palace/PalaceCard';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -8,7 +8,8 @@ import { Button } from '../components/ui/Button';
 import { usePalaces } from '../hooks/usePalaces';
 import { useUrgentReminders } from '../hooks/useReminders';
 import { lore, getGreeting } from '../lib/lore';
-import { db } from '../db';
+import { apiGet } from '../services/api';
+import type { Room } from '../types';
 import styles from './PalaceSelector.module.css';
 
 export function PalaceSelector() {
@@ -17,16 +18,20 @@ export function PalaceSelector() {
   const navigate = useNavigate();
 
   // Room count per palace
-  const roomCounts = useLiveQuery(async () => {
-    const rooms = await db.rooms.filter((r) => !r.isArchived).toArray();
+  const { data: allRooms = [] } = useQuery({
+    queryKey: ['rooms'],
+    queryFn: () => apiGet<Room[]>('/api/crud/rooms?isArchived=false'),
+  });
+
+  const roomCounts = useMemo(() => {
     const counts: Record<number, number> = {};
-    for (const room of rooms) {
+    for (const room of allRooms) {
       if (room.palaceId) {
         counts[room.palaceId] = (counts[room.palaceId] || 0) + 1;
       }
     }
     return counts;
-  });
+  }, [allRooms]);
 
   // Urgent reminder counts per palace
   const urgentCounts = useMemo(() => {

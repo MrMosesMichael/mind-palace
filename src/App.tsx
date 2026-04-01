@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AppShell } from './components/layout/AppShell';
@@ -26,7 +27,34 @@ import { Settings } from './pages/Settings';
 import { InventoryList } from './pages/InventoryList';
 import { InventoryForm } from './pages/InventoryForm';
 import { StubPage } from './pages/StubPage';
-import { initializeSettings } from './db';
+import { apiGet, apiPost } from './services/api';
+import type { AppSettings, Palace } from './types';
+
+async function initializeSettings() {
+  // Ensure default app settings exist
+  const settings = await apiGet<AppSettings[]>('/api/crud/appSettings');
+  if (settings.length === 0) {
+    await apiPost('/api/crud/appSettings', {
+      defaultUnitSystem: 'miles',
+      notificationsEnabled: false,
+      reminderLeadDays: 7,
+      reminderLeadMiles: 500,
+      theme: 'dark',
+      exportVersion: 1,
+    });
+  }
+
+  // Ensure at least one default palace exists
+  const palaces = await apiGet<Palace[]>('/api/crud/palaces');
+  if (palaces.length === 0) {
+    await apiPost('/api/crud/palaces', {
+      name: 'My Palace',
+      description: 'Default palace',
+      imageUrl: '/images/palaces/tudor-bungalow.jpg',
+      isDefault: true,
+    });
+  }
+}
 
 function AppRoutes() {
   const { isLoggedIn, isLoading } = useAuth();
@@ -113,12 +141,20 @@ function AppRoutes() {
   );
 }
 
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { staleTime: 30_000, retry: 1 },
+  },
+});
+
 export default function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <AppRoutes />
-      </BrowserRouter>
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <BrowserRouter>
+          <AppRoutes />
+        </BrowserRouter>
+      </AuthProvider>
+    </QueryClientProvider>
   );
 }

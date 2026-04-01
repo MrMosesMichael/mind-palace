@@ -1,9 +1,9 @@
 import { useNavigate } from 'react-router-dom';
-import { useLiveQuery } from 'dexie-react-hooks';
-import type { Room } from '../../types';
+import { useQuery } from '@tanstack/react-query';
+import type { Room, Schedule } from '../../types';
 import { getModule, getModuleIcon } from '../../modules';
-import { db } from '../../db';
 import { getScheduleStatus } from '../../services/reminderService';
+import { apiGet } from '../../services/api';
 import styles from './RoomCard.module.css';
 
 interface RoomCardProps {
@@ -27,25 +27,19 @@ export function RoomCard({ room, palaceId }: RoomCardProps) {
     : null;
 
   // Get next due schedule for this room
-  const nextDue = useLiveQuery(async () => {
-    if (!room.id) return null;
-    const schedules = await db.schedules
-      .where('roomId')
-      .equals(room.id)
-      .filter((s) => s.isActive && !!s.nextDueDate)
-      .toArray();
-    if (schedules.length === 0) return null;
-
-    // Sort by nextDueDate ascending
-    schedules.sort((a, b) => {
-      if (!a.nextDueDate || !b.nextDueDate) return 0;
-      return a.nextDueDate.localeCompare(b.nextDueDate);
-    });
-
-    const schedule = schedules[0];
-    const status = getScheduleStatus(schedule, room);
-    return { name: schedule.name, status };
-  }, [room.id]);
+  const { data: nextDue } = useQuery({
+    queryKey: ['room-next-due', room.id],
+    queryFn: async () => {
+      const schedules = await apiGet<Schedule[]>(`/api/crud/schedules?roomId=${room.id}&isActive=true`);
+      const withDue = schedules.filter((s) => !!s.nextDueDate);
+      if (withDue.length === 0) return null;
+      withDue.sort((a, b) => (a.nextDueDate ?? '').localeCompare(b.nextDueDate ?? ''));
+      const schedule = withDue[0];
+      const status = getScheduleStatus(schedule, room);
+      return { name: schedule.name, status };
+    },
+    enabled: !!room.id,
+  });
 
   const icon = mod ? getModuleIcon(mod.icon) : '\uD83D\uDCE6';
 

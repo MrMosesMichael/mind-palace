@@ -1,46 +1,34 @@
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { apiGet, apiPost, apiPut, apiDelete } from '../services/api';
 import type { Schedule } from '../types';
-import { nowISO } from '../lib/formatters';
 
 export function useSchedules(roomId: number | undefined) {
-  const schedules = useLiveQuery(
-    () =>
-      roomId
-        ? db.schedules.where('roomId').equals(roomId).toArray()
-        : Promise.resolve([] as Schedule[]),
-    [roomId]
-  );
+  const queryClient = useQueryClient();
 
-  const activeSchedules = useLiveQuery(
-    () =>
-      roomId
-        ? db.schedules
-            .where('roomId')
-            .equals(roomId)
-            .filter((s) => s.isActive)
-            .toArray()
-        : Promise.resolve([] as Schedule[]),
-    [roomId]
-  );
+  const { data: schedules = [] } = useQuery({
+    queryKey: ['schedules', { roomId }],
+    queryFn: () => apiGet<Schedule[]>(`/api/crud/schedules?roomId=${roomId}`),
+    enabled: !!roomId,
+  });
+
+  const activeSchedules = schedules.filter((s) => s.isActive);
 
   async function addSchedule(
     schedule: Omit<Schedule, 'id' | 'createdAt' | 'updatedAt'>
   ): Promise<number> {
-    const now = nowISO();
-    return db.schedules.add({
-      ...schedule,
-      createdAt: now,
-      updatedAt: now,
-    } as Schedule);
+    const { id } = await apiPost<{ id: number }>('/api/crud/schedules', schedule);
+    queryClient.invalidateQueries({ queryKey: ['schedules'] });
+    return id;
   }
 
   async function updateSchedule(id: number, changes: Partial<Schedule>) {
-    await db.schedules.update(id, { ...changes, updatedAt: nowISO() });
+    await apiPut(`/api/crud/schedules/${id}`, changes);
+    queryClient.invalidateQueries({ queryKey: ['schedules'] });
   }
 
   async function deleteSchedule(id: number) {
-    await db.schedules.delete(id);
+    await apiDelete(`/api/crud/schedules/${id}`);
+    queryClient.invalidateQueries({ queryKey: ['schedules'] });
   }
 
   async function completeSchedule(
@@ -48,49 +36,16 @@ export function useSchedules(roomId: number | undefined) {
     completedDate: string,
     completedValue?: number
   ) {
-    const schedule = await db.schedules.get(id);
-    if (!schedule) return;
-
-    const updates: Partial<Schedule> = {
-      lastCompletedDate: completedDate,
-      updatedAt: nowISO(),
-    };
-
-    if (completedValue !== undefined) {
-      updates.lastCompletedValue = completedValue;
-    }
-
-    // Compute next due
-    if (schedule.triggerType === 'time' && schedule.intervalValue && schedule.intervalUnit) {
-      const completed = new Date(completedDate);
-      const next = new Date(completed);
-      switch (schedule.intervalUnit) {
-        case 'days':
-          next.setDate(next.getDate() + schedule.intervalValue);
-          break;
-        case 'weeks':
-          next.setDate(next.getDate() + schedule.intervalValue * 7);
-          break;
-        case 'months':
-          next.setMonth(next.getMonth() + schedule.intervalValue);
-          break;
-        case 'years':
-          next.setFullYear(next.getFullYear() + schedule.intervalValue);
-          break;
-      }
-      updates.nextDueDate = next.toISOString().split('T')[0];
-    }
-
-    if (schedule.triggerType === 'mileage' && schedule.intervalValue && completedValue !== undefined) {
-      updates.nextDueValue = completedValue + schedule.intervalValue;
-    }
-
-    await db.schedules.update(id, updates);
+    await apiPost(`/api/crud/schedules/${id}/complete`, {
+      date: completedDate,
+      trackingValue: completedValue,
+    });
+    queryClient.invalidateQueries({ queryKey: ['schedules'] });
   }
 
   return {
-    schedules: schedules ?? [],
-    activeSchedules: activeSchedules ?? [],
+    schedules,
+    activeSchedules,
     addSchedule,
     updateSchedule,
     deleteSchedule,
@@ -99,10 +54,19 @@ export function useSchedules(roomId: number | undefined) {
 }
 
 export function useSchedule(id: number | undefined) {
-  return useLiveQuery(() => (id ? db.schedules.get(id) : undefined), [id]);
+  const { data: schedule } = useQuery({
+    queryKey: ['schedules', id],
+    queryFn: () => apiGet<Schedule>(`/api/crud/schedules/${id}`),
+    enabled: !!id,
+  });
+  return schedule;
 }
 
 /** Get all active schedules across all rooms (for Dreamcatcher) */
 export function useAllActiveSchedules() {
-  return useLiveQuery(() => db.schedules.filter((s) => s.isActive).toArray()) ?? [];
+  const { data: schedules = [] } = useQuery({
+    queryKey: ['schedules', { isActive: true }],
+    queryFn: () => apiGet<Schedule[]>('/api/crud/schedules?isActive=true'),
+  });
+  return schedules;
 }

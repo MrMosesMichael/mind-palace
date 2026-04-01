@@ -1,6 +1,7 @@
 import JSZip from 'jszip';
-import { db } from '../db';
-import { getPhotoUrl, isOPFSAvailable, generateThumbnail } from './photoStorage';
+import { apiGet, apiPost } from './api';
+import { apiFetch } from './apiClient';
+import { getPhotoUrl } from '../hooks/usePhotos';
 import { nowISO } from '../lib/formatters';
 import type { Photo } from '../types';
 
@@ -25,59 +26,6 @@ const TABLE_NAMES = [
 
 const APP_VERSION = '0.1.0';
 
-// ─── Internal Helpers ───────────────────────────────────────
-
-/**
- * Write a photo blob to OPFS or fallback IndexedDB.
- * Duplicated from photoStorage internals since those helpers are private.
- */
-async function writePhotoBlob(id: string, blob: Blob): Promise<void> {
-  if (isOPFSAvailable()) {
-    const root = await navigator.storage.getDirectory();
-    const dir = await root.getDirectoryHandle('photos', { create: true });
-    const fh = await dir.getFileHandle(`${id}.jpg`, { create: true });
-    const w = await fh.createWritable();
-    await w.write(blob);
-    await w.close();
-  } else {
-    await fallbackPut(id, blob);
-  }
-}
-
-const FALLBACK_DB_NAME = 'mind-palace-blobs';
-const FALLBACK_STORE_NAME = 'blobs';
-const FALLBACK_DB_VERSION = 1;
-
-function openFallbackDB(): Promise<IDBDatabase> {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(FALLBACK_DB_NAME, FALLBACK_DB_VERSION);
-    request.onupgradeneeded = () => {
-      const idb = request.result;
-      if (!idb.objectStoreNames.contains(FALLBACK_STORE_NAME)) {
-        idb.createObjectStore(FALLBACK_STORE_NAME);
-      }
-    };
-    request.onsuccess = () => resolve(request.result);
-    request.onerror = () => reject(request.error);
-  });
-}
-
-async function fallbackPut(id: string, blob: Blob): Promise<void> {
-  const idb = await openFallbackDB();
-  return new Promise((resolve, reject) => {
-    const tx = idb.transaction(FALLBACK_STORE_NAME, 'readwrite');
-    tx.objectStore(FALLBACK_STORE_NAME).put(blob, id);
-    tx.oncomplete = () => {
-      idb.close();
-      resolve();
-    };
-    tx.onerror = () => {
-      idb.close();
-      reject(tx.error);
-    };
-  });
-}
-
 // ─── Export ─────────────────────────────────────────────────
 
 export async function exportWarehouse(): Promise<Blob> {
@@ -93,33 +41,30 @@ export async function exportWarehouse(): Promise<Blob> {
     ),
   );
 
-  // 2. Dump all table data
+  // 2. Dump all table data via API
   const data: Record<string, unknown[]> = {};
 
   for (const name of TABLE_NAMES) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const rows = await (db as any)[name].toArray();
-
-    if (name === 'photos') {
-      // Strip thumbnailBlob — it will be regenerated on import
-      data[name] = (rows as Photo[]).map(({ thumbnailBlob, ...rest }) => rest);
-    } else {
+    try {
+      const rows = await apiGet<unknown[]>(`/api/crud/${name}`);
       data[name] = rows;
+    } catch {
+      data[name] = [];
     }
   }
 
   zip.file('data.json', JSON.stringify(data, null, 2));
 
-  // 3. Export full-resolution photo blobs
+  // 3. Export photo blobs via API
   const photos = (data.photos ?? []) as Array<Photo & { id: string }>;
 
   for (const photo of photos) {
     try {
-      const url = await getPhotoUrl(photo.id);
-      const response = await fetch(url);
+      const url = getPhotoUrl(photo.id);
+      const response = await apiFetch(url);
+      if (!response.ok) continue;
       const blob = await response.blob();
       zip.file(`photos/${photo.id}.jpg`, blob);
-      URL.revokeObjectURL(url);
     } catch {
       // Photo blob missing or unreadable — skip gracefully
     }
@@ -169,43 +114,38 @@ export async function importWarehouse(
     await dataFile.async('string'),
   );
 
-  // 4. Clear all existing data
-  await db.transaction(
-    'rw',
-    [
-      db.palaces,
-      db.roomHotspots,
-      db.rooms,
-      db.schedules,
-      db.taskLogs,
-      db.procedures,
-      db.procedureSteps,
-      db.supplies,
-      db.inventory,
-      db.references,
-      db.photos,
-      db.notes,
-      db.reminders,
-      db.appSettings,
-    ],
-    async () => {
-      for (const name of TABLE_NAMES) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        await (db as any)[name].clear();
+  // 4. Clear existing data (delete all rows from each table, reverse order for FK safety)
+  const deleteOrder = [...TABLE_NAMES].reverse();
+  for (const name of deleteOrder) {
+    try {
+      const rows = await apiGet<{ id: number | string }[]>(`/api/crud/${name}`);
+      for (const row of rows) {
+        try {
+          await apiFetch(`/api/crud/${name}/${row.id}`, { method: 'DELETE' });
+        } catch {
+          // Skip individual delete failures
+        }
       }
-    },
-  );
-
-  // 5. Bulk-put all records (preserves original IDs)
-  for (const name of TABLE_NAMES) {
-    const rows = data[name];
-    if (rows && rows.length > 0) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      await (db as any)[name].bulkPut(rows);
+    } catch {
+      // Table might not have data
     }
   }
 
-  // 6. Import photo blobs and regenerate thumbnails
+  // 5. Insert all records via API
+  for (const name of TABLE_NAMES) {
+    const rows = data[name];
+    if (rows && rows.length > 0) {
+      for (const row of rows) {
+        try {
+          await apiPost(`/api/crud/${name}`, row);
+        } catch {
+          // Skip individual insert failures
+        }
+      }
+    }
+  }
+
+  // 6. Import photo blobs
   let photosImported = 0;
   const photoRecords = (data.photos ?? []) as Photo[];
 
@@ -215,22 +155,16 @@ export async function importWarehouse(
 
     try {
       const blob = await zipEntry.async('blob');
+      const formData = new FormData();
+      formData.append('file', new File([blob], `${photo.id}.jpg`, { type: photo.mimeType || 'image/jpeg' }));
+      // Upload with photo's original ID by passing it as metadata
+      formData.append('existingId', photo.id);
+      if (photo.roomId) formData.append('roomId', String(photo.roomId));
 
-      // Store full-resolution blob
-      await writePhotoBlob(photo.id, blob);
-
-      // Regenerate thumbnail from imported blob
-      const thumbFile = new File([blob], `${photo.id}.jpg`, {
-        type: photo.mimeType || 'image/jpeg',
-      });
-      const thumbnailBlob = await generateThumbnail(thumbFile);
-
-      // Update photo record with regenerated thumbnail
-      await db.photos.update(photo.id, { thumbnailBlob });
-
+      await apiFetch('/api/photos/upload', { method: 'POST', body: formData });
       photosImported++;
     } catch {
-      // Failed to import this photo — metadata stays, blob missing
+      // Failed to import this photo — skip
     }
   }
 

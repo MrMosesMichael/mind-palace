@@ -1,33 +1,32 @@
 import { useState, useRef, useEffect } from 'react';
-import { useLiveQuery } from 'dexie-react-hooks';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
 import { Select } from '../components/ui/Select';
 import { Input } from '../components/ui/Input';
-import { db } from '../db';
+import { apiGet, apiPut, apiDelete } from '../services/api';
 import { exportWarehouse, importWarehouse, downloadBlob } from '../services/exportService';
 import { useAuth } from '../contexts/AuthContext';
 import { apiFetch } from '../services/apiClient';
-import { pushSync, getSyncStatus, onSyncStatusChange } from '../services/syncService';
 import { lore, getRandomTip } from '../lib/lore';
 import { formatDate } from '../lib/formatters';
 import type { AppSettings } from '../types';
 import styles from './Settings.module.css';
 
 export function Settings() {
-  const settings = useLiveQuery(() => db.appSettings.toCollection().first());
+  const queryClient = useQueryClient();
+  const { data: settingsArr = [] } = useQuery({
+    queryKey: ['appSettings'],
+    queryFn: () => apiGet<AppSettings[]>('/api/crud/appSettings'),
+  });
+  const settings = settingsArr[0];
+
   const importRef = useRef<HTMLInputElement>(null);
   const { user, logout } = useAuth();
 
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [statusMsg, setStatusMsg] = useState('');
-  const [syncStatus, setSyncStatus] = useState(getSyncStatus());
-
-  // Sync status listener
-  useEffect(() => {
-    return onSyncStatusChange(setSyncStatus);
-  }, []);
 
   // User management state (admin only)
   const [showRegister, setShowRegister] = useState(false);
@@ -55,7 +54,8 @@ export function Settings() {
 
   async function updateSetting(changes: Partial<AppSettings>) {
     if (!settings?.id) return;
-    await db.appSettings.update(settings.id, changes);
+    await apiPut(`/api/crud/appSettings/${settings.id}`, changes);
+    queryClient.invalidateQueries({ queryKey: ['appSettings'] });
   }
 
   async function handleExport() {
@@ -88,6 +88,7 @@ export function Settings() {
     try {
       const stats = await importWarehouse(file);
       setStatusMsg(`Restored ${stats.rooms} rooms and ${stats.photos} photos.`);
+      queryClient.invalidateQueries();
     } catch (err) {
       setStatusMsg(`Import failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
@@ -97,20 +98,22 @@ export function Settings() {
   }
 
   async function handleClearData() {
-    if (!window.confirm('Delete ALL data from the warehouse? This cannot be undone.')) return;
+    if (!window.confirm('Delete ALL data? This cannot be undone.')) return;
     if (!window.confirm('Are you absolutely sure? Everything will be permanently lost.')) return;
 
     try {
       const tables = [
-        db.rooms, db.schedules, db.taskLogs, db.procedures,
-        db.procedureSteps, db.supplies, db.inventory, db.references,
-        db.photos, db.notes, db.reminders,
+        'rooms', 'schedules', 'taskLogs', 'procedures',
+        'procedureSteps', 'supplies', 'inventory', 'references',
+        'photos', 'notes', 'reminders',
       ];
-      await db.transaction('rw', tables, async () => {
-        for (const table of tables) {
-          await table.clear();
+      for (const table of tables) {
+        const rows = await apiGet<{ id: number }[]>(`/api/crud/${table}`);
+        for (const row of rows) {
+          await apiDelete(`/api/crud/${table}/${row.id}`);
         }
-      });
+      }
+      queryClient.invalidateQueries();
       setStatusMsg('All data cleared.');
     } catch (err) {
       setStatusMsg(`Clear failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
@@ -221,16 +224,6 @@ export function Settings() {
             <span className={styles.accountName}>{user?.displayName ?? user?.username}</span>
             <span className={styles.accountRole}>{user?.role}</span>
           </div>
-          <div className={styles.syncRow}>
-            <span className={styles.syncDot} data-status={syncStatus} />
-            <span className={styles.description}>
-              {syncStatus === 'syncing' ? 'Syncing...' :
-               syncStatus === 'offline' ? 'Offline — changes queued' :
-               syncStatus === 'error' ? 'Sync error — will retry' :
-               'Synced'}
-            </span>
-            <Button size="sm" variant="ghost" onClick={() => pushSync()}>Sync Now</Button>
-          </div>
           <Button variant="ghost" size="sm" onClick={logout}>
             Log Out
           </Button>
@@ -282,7 +275,7 @@ export function Settings() {
         <section className={styles.section}>
           <h2 className={styles.sectionTitleDanger}>Danger Zone</h2>
           <p className={styles.description}>
-            Permanently delete all data from the warehouse. This cannot be undone.
+            Permanently delete all data. This cannot be undone.
           </p>
           <Button variant="danger" size="sm" onClick={handleClearData}>
             Clear All Data

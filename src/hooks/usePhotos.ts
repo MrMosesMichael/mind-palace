@@ -1,11 +1,7 @@
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { apiGet, apiDelete as apiDeleteFn } from '../services/api';
+import { apiFetch } from '../services/apiClient';
 import type { Photo } from '../types';
-import {
-  savePhoto,
-  getPhotoUrl as getPhotoUrlFromStorage,
-  deletePhoto as deletePhotoFromStorage,
-} from '../services/photoStorage';
 
 interface PhotoFilters {
   roomId?: number;
@@ -15,51 +11,69 @@ interface PhotoFilters {
   noteId?: number;
 }
 
+/** Build query string from non-undefined filter values */
+function buildPhotoQuery(filters: PhotoFilters): string {
+  const params = new URLSearchParams();
+  if (filters.roomId !== undefined) params.set('roomId', String(filters.roomId));
+  if (filters.procedureId !== undefined) params.set('procedureId', String(filters.procedureId));
+  if (filters.logEntryId !== undefined) params.set('logEntryId', String(filters.logEntryId));
+  if (filters.stepId !== undefined) params.set('stepId', String(filters.stepId));
+  if (filters.noteId !== undefined) params.set('noteId', String(filters.noteId));
+  const qs = params.toString();
+  return qs ? `?${qs}` : '';
+}
+
 export function usePhotos(filters: PhotoFilters) {
-  const { roomId, procedureId, logEntryId, stepId, noteId } = filters;
+  const queryClient = useQueryClient();
 
-  const photos = useLiveQuery(
-    async () => {
-      const allPhotos = await db.photos.toArray();
-      return allPhotos
-        .filter((p) => {
-          if (roomId !== undefined && p.roomId !== roomId) return false;
-          if (procedureId !== undefined && p.procedureId !== procedureId) return false;
-          if (logEntryId !== undefined && p.logEntryId !== logEntryId) return false;
-          if (stepId !== undefined && p.stepId !== stepId) return false;
-          if (noteId !== undefined && p.noteId !== noteId) return false;
-          return true;
-        })
-        .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-    },
-    [roomId, procedureId, logEntryId, stepId, noteId]
-  );
+  const { data: photos = [] } = useQuery({
+    queryKey: ['photos', filters],
+    queryFn: () => apiGet<Photo[]>(`/api/crud/photos${buildPhotoQuery(filters)}`),
+  });
 
-  async function addPhoto(file: File, metadata: { caption?: string }): Promise<Photo> {
-    return savePhoto(file, {
-      roomId,
-      procedureId,
-      logEntryId,
-      stepId,
-      noteId,
-      caption: metadata.caption,
+  async function addPhoto(
+    file: File,
+    metadata: { caption?: string }
+  ): Promise<Photo> {
+    const formData = new FormData();
+    formData.append('file', file);
+    if (metadata.caption) formData.append('caption', metadata.caption);
+    if (filters.roomId !== undefined) formData.append('roomId', String(filters.roomId));
+    if (filters.procedureId !== undefined) formData.append('procedureId', String(filters.procedureId));
+    if (filters.logEntryId !== undefined) formData.append('logEntryId', String(filters.logEntryId));
+    if (filters.stepId !== undefined) formData.append('stepId', String(filters.stepId));
+    if (filters.noteId !== undefined) formData.append('noteId', String(filters.noteId));
+
+    const res = await apiFetch('/api/photos/upload', {
+      method: 'POST',
+      body: formData,
     });
+    if (!res.ok) throw new Error(`Photo upload failed: ${res.status}`);
+    const photo = await res.json();
+    queryClient.invalidateQueries({ queryKey: ['photos'] });
+    return photo;
   }
 
   async function updatePhoto(id: string, changes: Partial<Photo>) {
-    await db.photos.update(id, changes);
+    const res = await apiFetch(`/api/crud/photos/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(changes),
+    });
+    if (!res.ok) throw new Error(`Photo update failed: ${res.status}`);
+    queryClient.invalidateQueries({ queryKey: ['photos'] });
   }
 
   async function deletePhoto(id: string) {
-    await deletePhotoFromStorage(id);
+    await apiDeleteFn(`/api/crud/photos/${id}`);
+    queryClient.invalidateQueries({ queryKey: ['photos'] });
   }
 
-  function getPhotoUrl(id: string): Promise<string> {
-    return getPhotoUrlFromStorage(id);
+  function getPhotoUrl(id: string): string {
+    return `/api/photos/${id}/full`;
   }
 
   return {
-    photos: photos ?? [],
+    photos,
     addPhoto,
     updatePhoto,
     deletePhoto,
@@ -68,10 +82,15 @@ export function usePhotos(filters: PhotoFilters) {
 }
 
 export function usePhoto(id: string | undefined) {
-  const photo = useLiveQuery(
-    () => (id ? db.photos.get(id) : undefined),
-    [id]
-  );
-
+  const { data: photo } = useQuery({
+    queryKey: ['photos', id],
+    queryFn: () => apiGet<Photo>(`/api/crud/photos/${id}`),
+    enabled: !!id,
+  });
   return photo;
+}
+
+/** Helper to get a photo URL by ID (no hook needed) */
+export function getPhotoUrl(id: string): string {
+  return `/api/photos/${id}/full`;
 }

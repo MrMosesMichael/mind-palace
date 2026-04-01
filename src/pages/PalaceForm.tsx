@@ -4,14 +4,16 @@ import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { usePalaces, usePalace } from '../hooks/usePalaces';
-import { savePhoto, getPhotoUrl, deletePhoto as deletePhotoStorage } from '../services/photoStorage';
+import { getPhotoUrl } from '../hooks/usePhotos';
+import { apiFetch } from '../services/apiClient';
+import { apiDelete } from '../services/api';
 import { lore } from '../lib/lore';
 import styles from './PalaceForm.module.css';
 
 export function PalaceForm() {
   const { palaceId } = useParams();
   const isEditing = !!palaceId;
-  const existingPalace = usePalace(palaceId ? Number(palaceId) : undefined);
+  const { palace: existingPalace } = usePalace(palaceId ? Number(palaceId) : undefined);
   const { addPalace, updatePalace, deletePalace } = usePalaces();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -33,12 +35,7 @@ export function PalaceForm() {
       setImageUrl(existingPalace.imageUrl);
 
       if (existingPalace.imageId) {
-        getPhotoUrl(existingPalace.imageId)
-          .then((url) => setImagePreview(url))
-          .catch(() => {
-            // Fall back to imageUrl if imageId fails
-            if (existingPalace.imageUrl) setImagePreview(existingPalace.imageUrl);
-          });
+        setImagePreview(getPhotoUrl(existingPalace.imageId));
       } else if (existingPalace.imageUrl) {
         setImagePreview(existingPalace.imageUrl);
       }
@@ -51,11 +48,15 @@ export function PalaceForm() {
 
     setIsUploading(true);
     try {
-      const photo = await savePhoto(file, { caption: 'Palace artwork' });
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('caption', 'Palace artwork');
+      const res = await apiFetch('/api/photos/upload', { method: 'POST', body: formData });
+      if (!res.ok) throw new Error('Upload failed');
+      const photo = await res.json();
       setImageId(photo.id);
-      setImageUrl(undefined); // Uploaded image replaces static imageUrl
-      const url = await getPhotoUrl(photo.id);
-      setImagePreview(url);
+      setImageUrl(undefined);
+      setImagePreview(getPhotoUrl(photo.id));
     } catch {
       // Failed to upload
     } finally {
@@ -67,7 +68,7 @@ export function PalaceForm() {
   async function handleRemoveImage() {
     if (imageId) {
       try {
-        await deletePhotoStorage(imageId);
+        await apiDelete(`/api/crud/photos/${imageId}`);
       } catch {
         // Ignore
       }

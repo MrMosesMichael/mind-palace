@@ -1,33 +1,36 @@
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { apiGet, apiPost, apiPut, apiDelete } from '../services/api';
 import type { Reference } from '../types';
-import { nowISO } from '../lib/formatters';
 
 export function useReferences(roomId: number | undefined) {
-  const references = useLiveQuery(
-    () =>
-      roomId
-        ? db.references.where('roomId').equals(roomId).toArray()
-        : Promise.resolve([] as Reference[]),
-    [roomId]
-  );
+  const queryClient = useQueryClient();
+
+  const { data: references = [] } = useQuery({
+    queryKey: ['references', { roomId }],
+    queryFn: () => apiGet<Reference[]>(`/api/crud/references?roomId=${roomId}`),
+    enabled: !!roomId,
+  });
 
   async function addReference(
     ref: Omit<Reference, 'id' | 'createdAt'>
   ): Promise<number> {
-    return db.references.add({ ...ref, createdAt: nowISO() } as Reference);
+    const { id } = await apiPost<{ id: number }>('/api/crud/references', ref);
+    queryClient.invalidateQueries({ queryKey: ['references'] });
+    return id;
   }
 
   async function updateReference(id: number, changes: Partial<Reference>) {
-    await db.references.update(id, changes);
+    await apiPut(`/api/crud/references/${id}`, changes);
+    queryClient.invalidateQueries({ queryKey: ['references'] });
   }
 
   async function deleteReference(id: number) {
-    await db.references.delete(id);
+    await apiDelete(`/api/crud/references/${id}`);
+    queryClient.invalidateQueries({ queryKey: ['references'] });
   }
 
   return {
-    references: references ?? [],
+    references,
     addReference,
     updateReference,
     deleteReference,
@@ -35,26 +38,30 @@ export function useReferences(roomId: number | undefined) {
 }
 
 export function useProcedureReferences(procedureId: number | undefined) {
-  const references = useLiveQuery(
-    () =>
-      procedureId
-        ? db.references.where('procedureId').equals(procedureId).toArray()
-        : Promise.resolve([] as Reference[]),
-    [procedureId]
-  );
+  const queryClient = useQueryClient();
+
+  const { data: references = [] } = useQuery({
+    queryKey: ['references', { procedureId }],
+    queryFn: () =>
+      apiGet<Reference[]>(`/api/crud/references?procedureId=${procedureId}`),
+    enabled: !!procedureId,
+  });
 
   async function addReference(
     ref: Omit<Reference, 'id' | 'createdAt'>
   ): Promise<number> {
-    return db.references.add({ ...ref, createdAt: nowISO() } as Reference);
+    const { id } = await apiPost<{ id: number }>('/api/crud/references', ref);
+    queryClient.invalidateQueries({ queryKey: ['references'] });
+    return id;
   }
 
   async function deleteReference(id: number) {
-    await db.references.delete(id);
+    await apiDelete(`/api/crud/references/${id}`);
+    queryClient.invalidateQueries({ queryKey: ['references'] });
   }
 
   return {
-    references: references ?? [],
+    references,
     addReference,
     deleteReference,
   };

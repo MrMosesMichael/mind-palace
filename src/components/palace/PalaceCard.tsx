@@ -1,6 +1,5 @@
-import { useState, useEffect } from 'react';
 import type { Palace } from '../../types';
-import { getPhotoUrl } from '../../services/photoStorage';
+import { getPhotoUrl } from '../../hooks/usePhotos';
 import styles from './PalaceCard.module.css';
 
 interface PalaceCardProps {
@@ -11,25 +10,9 @@ interface PalaceCardProps {
 }
 
 export function PalaceCard({ palace, roomCount, urgentCount, onClick }: PalaceCardProps) {
-  const [imgUrl, setImgUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      if (palace.imageId) {
-        try {
-          const url = await getPhotoUrl(palace.imageId);
-          if (!cancelled) setImgUrl(url);
-          return;
-        } catch { /* fall through */ }
-      }
-      if (palace.imageUrl) {
-        if (!cancelled) setImgUrl(palace.imageUrl);
-      }
-    }
-    load();
-    return () => { cancelled = true; };
-  }, [palace.imageId, palace.imageUrl]);
+  const imgUrl = palace.imageId
+    ? getPhotoUrl(palace.imageId)
+    : palace.imageUrl ?? null;
 
   return (
     <button className={styles.card} onClick={onClick}>

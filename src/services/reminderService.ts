@@ -1,5 +1,4 @@
 import type { Schedule, Room } from '../types';
-import { db } from '../db';
 
 export type ScheduleStatus = 'overdue' | 'due_soon' | 'ok' | 'unknown';
 
@@ -44,53 +43,6 @@ export interface ReminderItem {
   room: Room;
   status: ScheduleStatus;
   sortKey: number; // Lower = more urgent
-}
-
-export async function computeAllReminders(): Promise<ReminderItem[]> {
-  const schedules = await db.schedules.filter((s) => s.isActive).toArray();
-  const roomIds = [...new Set(schedules.map((s) => s.roomId))];
-  const rooms = await db.rooms.bulkGet(roomIds);
-  const roomMap = new Map<number, Room>();
-  for (const r of rooms) {
-    if (r) roomMap.set(r.id!, r);
-  }
-
-  const items: ReminderItem[] = [];
-
-  for (const schedule of schedules) {
-    const room = roomMap.get(schedule.roomId);
-    if (!room || room.isArchived) continue;
-
-    const status = getScheduleStatus(schedule, room);
-    if (status === 'unknown') continue;
-
-    let sortKey = 0;
-    if (status === 'overdue') {
-      sortKey = -1000;
-      if (schedule.nextDueDate) {
-        sortKey = -Math.abs(daysBetween(new Date(schedule.nextDueDate), new Date()));
-      }
-    } else if (status === 'due_soon') {
-      sortKey = 0;
-      if (schedule.nextDueDate) {
-        sortKey = daysBetween(new Date(), new Date(schedule.nextDueDate));
-      }
-    } else {
-      sortKey = 1000;
-      if (schedule.nextDueDate) {
-        sortKey = daysBetween(new Date(), new Date(schedule.nextDueDate));
-      }
-    }
-
-    items.push({ schedule, room, status, sortKey });
-  }
-
-  items.sort((a, b) => a.sortKey - b.sortKey);
-  return items;
-}
-
-function daysBetween(a: Date, b: Date): number {
-  return Math.floor((b.getTime() - a.getTime()) / (1000 * 60 * 60 * 24));
 }
 
 /** Generate an .ics calendar event for a schedule reminder */

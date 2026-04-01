@@ -1,88 +1,64 @@
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { apiGet, apiPost, apiPut, apiDelete } from '../services/api';
 import type { TaskLog } from '../types';
-import { nowISO } from '../lib/formatters';
 
 export function useTaskLogs(roomId: number | undefined) {
-  const logs = useLiveQuery(
-    () =>
-      roomId
-        ? db.taskLogs.where('roomId').equals(roomId).reverse().sortBy('date')
-        : Promise.resolve([] as TaskLog[]),
-    [roomId]
-  );
+  const queryClient = useQueryClient();
+
+  const { data: logs = [] } = useQuery({
+    queryKey: ['taskLogs', { roomId }],
+    queryFn: () => apiGet<TaskLog[]>(`/api/crud/taskLogs?roomId=${roomId}`),
+    enabled: !!roomId,
+  });
 
   async function addTaskLog(
     log: Omit<TaskLog, 'id' | 'createdAt' | 'updatedAt'>
   ): Promise<number> {
-    const now = nowISO();
-    const logId = await db.taskLogs.add({
-      ...log,
-      createdAt: now,
-      updatedAt: now,
-    } as TaskLog);
+    const { id } = await apiPost<{ id: number }>('/api/crud/taskLogs', log);
 
-    // Auto-advance linked schedule
+    // Auto-advance linked schedule via the complete endpoint
     if (log.scheduleId) {
-      const schedule = await db.schedules.get(log.scheduleId);
-      if (schedule) {
-        const updates: Record<string, unknown> = {
-          lastCompletedDate: log.date,
-          updatedAt: now,
-        };
-
-        if (log.trackingValue !== undefined) {
-          updates.lastCompletedValue = log.trackingValue;
-        }
-
-        // Compute next due
-        if (schedule.triggerType === 'time' && schedule.intervalValue && schedule.intervalUnit) {
-          const completed = new Date(log.date);
-          const next = new Date(completed);
-          switch (schedule.intervalUnit) {
-            case 'days': next.setDate(next.getDate() + schedule.intervalValue); break;
-            case 'weeks': next.setDate(next.getDate() + schedule.intervalValue * 7); break;
-            case 'months': next.setMonth(next.getMonth() + schedule.intervalValue); break;
-            case 'years': next.setFullYear(next.getFullYear() + schedule.intervalValue); break;
-          }
-          updates.nextDueDate = next.toISOString().split('T')[0];
-        }
-
-        if (schedule.triggerType === 'mileage' && schedule.intervalValue && log.trackingValue !== undefined) {
-          updates.nextDueValue = log.trackingValue + schedule.intervalValue;
-        }
-
-        await db.schedules.update(log.scheduleId, updates);
-      }
+      await apiPost(`/api/crud/schedules/${log.scheduleId}/complete`, {
+        date: log.date,
+        trackingValue: log.trackingValue,
+      });
+      queryClient.invalidateQueries({ queryKey: ['schedules'] });
     }
 
     // Update room's current mileage if tracking value provided
     if (log.trackingValue !== undefined && log.roomId) {
-      const room = await db.rooms.get(log.roomId);
-      if (room) {
-        const currentMileage = Number((room.metadata as Record<string, unknown>)?.currentMileage ?? 0);
+      try {
+        const room = await apiGet<{ metadata?: Record<string, unknown> }>(
+          `/api/crud/rooms/${log.roomId}`
+        );
+        const currentMileage = Number(room.metadata?.currentMileage ?? 0);
         if (log.trackingValue > currentMileage) {
-          await db.rooms.update(log.roomId, {
+          await apiPut(`/api/crud/rooms/${log.roomId}`, {
             metadata: { ...room.metadata, currentMileage: log.trackingValue },
-            updatedAt: now,
           });
+          queryClient.invalidateQueries({ queryKey: ['rooms'] });
         }
+      } catch {
+        // Non-critical side effect — don't fail the whole add
       }
     }
 
-    return logId;
+    queryClient.invalidateQueries({ queryKey: ['taskLogs'] });
+    return id;
   }
 
   async function updateTaskLog(id: number, changes: Partial<TaskLog>) {
-    await db.taskLogs.update(id, { ...changes, updatedAt: nowISO() });
+    await apiPut(`/api/crud/taskLogs/${id}`, changes);
+    queryClient.invalidateQueries({ queryKey: ['taskLogs'] });
   }
 
   async function deleteTaskLog(id: number) {
-    await db.taskLogs.delete(id);
+    await apiDelete(`/api/crud/taskLogs/${id}`);
+    queryClient.invalidateQueries({ queryKey: ['taskLogs'] });
   }
 
   return {
-    logs: logs ?? [],
+    logs,
     addTaskLog,
     updateTaskLog,
     deleteTaskLog,
@@ -90,5 +66,10 @@ export function useTaskLogs(roomId: number | undefined) {
 }
 
 export function useTaskLog(id: number | undefined) {
-  return useLiveQuery(() => (id ? db.taskLogs.get(id) : undefined), [id]);
+  const { data: log } = useQuery({
+    queryKey: ['taskLogs', id],
+    queryFn: () => apiGet<TaskLog>(`/api/crud/taskLogs/${id}`),
+    enabled: !!id,
+  });
+  return log;
 }

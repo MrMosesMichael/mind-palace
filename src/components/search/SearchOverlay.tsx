@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { db } from '../../db';
+import { apiGet } from '../../services/api';
 import { getModuleIcon } from '../../modules';
 import { lore } from '../../lib/lore';
 import { SearchResult } from './SearchResult';
@@ -17,6 +17,14 @@ interface SearchResultItem {
   title: string;
   subtitle?: string;
   path: string;
+}
+
+interface ServerSearchResults {
+  rooms: Array<{ id: number; palaceId?: number; name: string; description?: string; moduleType: string }>;
+  schedules: Array<{ id: number; roomId: number; name: string; room?: { id: number; palaceId?: number; name: string; moduleType: string } }>;
+  procedures: Array<{ id: number; roomId?: number; title: string; description?: string; room?: { id: number; palaceId?: number; name: string; moduleType: string } }>;
+  notes: Array<{ id: number; roomId?: number; title?: string; content: string; room?: { id: number; palaceId?: number; name: string } }>;
+  references: Array<{ id: number; roomId?: number; title: string; url: string; room?: { id: number; palaceId?: number; name: string } }>;
 }
 
 function roomPath(room: { id?: number; palaceId?: number }): string {
@@ -39,7 +47,6 @@ export function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
     }
   }, [isOpen]);
 
-  // Close on escape
   useEffect(() => {
     function handleKey(e: KeyboardEvent) {
       if (e.key === 'Escape' && isOpen) {
@@ -56,24 +63,16 @@ export function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
       return;
     }
     setIsSearching(true);
-    const lower = q.toLowerCase();
     const items: SearchResultItem[] = [];
 
     try {
-      // Search rooms
-      const rooms = await db.rooms.filter((r) =>
-        !r.isArchived && (
-          r.name.toLowerCase().includes(lower) ||
-          (r.description?.toLowerCase().includes(lower) ?? false)
-        )
-      ).toArray();
+      const data = await apiGet<ServerSearchResults>(`/api/crud/search?q=${encodeURIComponent(q)}`);
 
-      for (const room of rooms) {
+      for (const room of (data.rooms ?? [])) {
         const iconName = room.moduleType === 'garage' ? 'wrench'
           : room.moduleType === 'kitchen' ? 'flame'
           : room.moduleType === 'yard' ? 'leaf'
           : room.moduleType === 'bathroom' ? 'droplets'
-          : room.moduleType === 'home' ? 'house'
           : 'house';
         items.push({
           type: 'room',
@@ -84,73 +83,46 @@ export function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
         });
       }
 
-      // Search schedules
-      const schedules = await db.schedules.filter((s) =>
-        s.isActive && s.name.toLowerCase().includes(lower)
-      ).toArray();
-
-      for (const schedule of schedules) {
-        const room = await db.rooms.get(schedule.roomId);
-        const prefix = room ? roomPath(room) : `/room/${schedule.roomId}`;
+      for (const schedule of (data.schedules ?? [])) {
+        const prefix = schedule.room ? roomPath(schedule.room) : `/room/${schedule.roomId}`;
         items.push({
           type: 'schedule',
           icon: '\uD83D\uDCC5',
           title: schedule.name,
-          subtitle: room?.name,
+          subtitle: schedule.room?.name,
           path: `${prefix}/schedule/${schedule.id}`,
         });
       }
 
-      // Search procedures
-      const procedures = await db.procedures.filter((p) =>
-        p.title.toLowerCase().includes(lower) ||
-        (p.description?.toLowerCase().includes(lower) ?? false)
-      ).toArray();
-
-      for (const proc of procedures) {
-        const room = proc.roomId ? await db.rooms.get(proc.roomId) : undefined;
-        const prefix = room ? roomPath(room) : `/room/${proc.roomId}`;
+      for (const proc of (data.procedures ?? [])) {
+        const prefix = proc.room ? roomPath(proc.room) : `/room/${proc.roomId}`;
         items.push({
           type: 'procedure',
-          icon: room?.moduleType === 'kitchen' ? '\uD83C\uDF73' : '\uD83D\uDDC4',
+          icon: proc.room?.moduleType === 'kitchen' ? '\uD83C\uDF73' : '\uD83D\uDDC4',
           title: proc.title,
-          subtitle: room?.name,
+          subtitle: proc.room?.name,
           path: `${prefix}/procedure/${proc.id}`,
         });
       }
 
-      // Search notes
-      const notes = await db.notes.filter((n) =>
-        (n.title?.toLowerCase().includes(lower) ?? false) ||
-        n.content.toLowerCase().includes(lower)
-      ).toArray();
-
-      for (const note of notes) {
-        const room = note.roomId ? await db.rooms.get(note.roomId) : undefined;
-        const prefix = room ? roomPath(room) : (note.roomId ? `/room/${note.roomId}` : '');
+      for (const note of (data.notes ?? [])) {
+        const prefix = note.room ? roomPath(note.room) : (note.roomId ? `/room/${note.roomId}` : '');
         items.push({
           type: 'note',
           icon: '\uD83D\uDCDD',
           title: note.title ?? 'Note',
-          subtitle: room?.name,
+          subtitle: note.room?.name,
           path: prefix ? `${prefix}/notes` : '/',
         });
       }
 
-      // Search references
-      const refs = await db.references.filter((r) =>
-        r.title.toLowerCase().includes(lower) ||
-        r.url.toLowerCase().includes(lower)
-      ).toArray();
-
-      for (const ref of refs) {
-        const room = ref.roomId ? await db.rooms.get(ref.roomId) : undefined;
-        const prefix = room ? roomPath(room) : (ref.roomId ? `/room/${ref.roomId}` : '');
+      for (const ref of (data.references ?? [])) {
+        const prefix = ref.room ? roomPath(ref.room) : (ref.roomId ? `/room/${ref.roomId}` : '');
         items.push({
           type: 'reference',
           icon: '\uD83D\uDCDA',
           title: ref.title,
-          subtitle: room?.name,
+          subtitle: ref.room?.name,
           path: prefix ? `${prefix}/references` : '/',
         });
       }
@@ -174,7 +146,6 @@ export function SearchOverlay({ isOpen, onClose }: SearchOverlayProps) {
 
   if (!isOpen) return null;
 
-  // Group results by type
   const grouped = {
     room: results.filter((r) => r.type === 'room'),
     schedule: results.filter((r) => r.type === 'schedule'),

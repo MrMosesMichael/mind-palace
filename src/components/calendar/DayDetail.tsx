@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import type { ReminderItem } from '../../services/reminderService';
 import { getModuleIcon } from '../../modules';
 import { useSchedules } from '../../hooks/useSchedules';
-import { db } from '../../db';
+import { useTaskLogs } from '../../hooks/useTaskLogs';
 import { lore } from '../../lib/lore';
 import styles from './DayDetail.module.css';
 
@@ -15,6 +15,7 @@ interface DayDetailProps {
 function TaskRow({ item }: { item: ReminderItem }) {
   const navigate = useNavigate();
   const { completeSchedule } = useSchedules(item.room.id);
+  const { addTaskLog } = useTaskLogs(item.room.id);
   const [completing, setCompleting] = useState(false);
 
   async function handleComplete(e: React.MouseEvent) {
@@ -22,15 +23,13 @@ function TaskRow({ item }: { item: ReminderItem }) {
     setCompleting(true);
     try {
       await completeSchedule(item.schedule.id!, new Date().toISOString().split('T')[0]);
-      await db.taskLogs.add({
+      await addTaskLog({
         roomId: item.room.id!,
         scheduleId: item.schedule.id!,
         title: `Completed: ${item.schedule.name}`,
         date: new Date().toISOString().split('T')[0],
         performedBy: 'self',
         photoIds: [],
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
       });
     } catch {
       setCompleting(false);

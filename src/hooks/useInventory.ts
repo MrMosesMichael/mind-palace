@@ -1,38 +1,36 @@
-import { useLiveQuery } from 'dexie-react-hooks';
-import { db } from '../db';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { apiGet, apiPost, apiPut, apiDelete } from '../services/api';
 import type { Inventory } from '../types';
-import { nowISO } from '../lib/formatters';
 
 export function useInventory(roomId: number | undefined) {
-  const items = useLiveQuery(
-    () =>
-      roomId
-        ? db.inventory.where('roomId').equals(roomId).toArray()
-        : Promise.resolve([] as Inventory[]),
-    [roomId]
-  );
+  const queryClient = useQueryClient();
+
+  const { data: items = [] } = useQuery({
+    queryKey: ['inventory', { roomId }],
+    queryFn: () => apiGet<Inventory[]>(`/api/crud/inventory?roomId=${roomId}`),
+    enabled: !!roomId,
+  });
 
   async function addItem(
     item: Omit<Inventory, 'id' | 'createdAt' | 'updatedAt'>
   ): Promise<number> {
-    const now = nowISO();
-    return db.inventory.add({
-      ...item,
-      createdAt: now,
-      updatedAt: now,
-    } as Inventory);
+    const { id } = await apiPost<{ id: number }>('/api/crud/inventory', item);
+    queryClient.invalidateQueries({ queryKey: ['inventory'] });
+    return id;
   }
 
   async function updateItem(id: number, changes: Partial<Inventory>) {
-    await db.inventory.update(id, { ...changes, updatedAt: nowISO() });
+    await apiPut(`/api/crud/inventory/${id}`, changes);
+    queryClient.invalidateQueries({ queryKey: ['inventory'] });
   }
 
   async function deleteItem(id: number) {
-    await db.inventory.delete(id);
+    await apiDelete(`/api/crud/inventory/${id}`);
+    queryClient.invalidateQueries({ queryKey: ['inventory'] });
   }
 
   return {
-    items: items ?? [],
+    items,
     addItem,
     updateItem,
     deleteItem,
@@ -40,5 +38,10 @@ export function useInventory(roomId: number | undefined) {
 }
 
 export function useInventoryItem(id: number | undefined) {
-  return useLiveQuery(() => (id ? db.inventory.get(id) : undefined), [id]);
+  const { data: item } = useQuery({
+    queryKey: ['inventory', id],
+    queryFn: () => apiGet<Inventory>(`/api/crud/inventory/${id}`),
+    enabled: !!id,
+  });
+  return item;
 }

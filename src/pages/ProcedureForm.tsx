@@ -14,7 +14,7 @@ import {
 import { useProcedureReferences } from '../hooks/useReferences';
 import { useRoom } from '../hooks/useRooms';
 import { getModule } from '../modules';
-import { savePhoto } from '../services/photoStorage';
+import { apiFetch } from '../services/apiClient';
 import { lore } from '../lib/lore';
 import styles from './ProcedureForm.module.css';
 
@@ -302,7 +302,12 @@ export function ProcedureForm() {
 
     if (draft.id) {
       // Existing step — save photo immediately
-      await savePhoto(file, { roomId, procedureId: pid ? Number(pid) : undefined, stepId: draft.id });
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('roomId', String(roomId));
+      if (pid) formData.append('procedureId', String(pid));
+      formData.append('stepId', String(draft.id));
+      await apiFetch('/api/photos/upload', { method: 'POST', body: formData });
     } else {
       // New step — buffer for saving after step creation
       updateStepDraft(activeStepPhotoIndex, {
@@ -319,7 +324,12 @@ export function ProcedureForm() {
     const files = e.target.files;
     if (!files || files.length === 0 || activeSupplyPhotoIndex === null) return;
     const file = files[0];
-    const photo = await savePhoto(file, { roomId });
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('roomId', String(roomId));
+    const uploadRes = await apiFetch('/api/photos/upload', { method: 'POST', body: formData });
+    if (!uploadRes.ok) throw new Error('Upload failed');
+    const photo = await uploadRes.json();
     updateSupplyDraft(activeSupplyPhotoIndex, { photoId: photo.id });
     setActiveSupplyPhotoIndex(null);
     e.target.value = '';
@@ -399,7 +409,14 @@ export function ProcedureForm() {
         if (draft.pendingPhotos.length > 0) {
           const newPhotoIds: string[] = [];
           for (const file of draft.pendingPhotos) {
-            const photo = await savePhoto(file, { roomId, procedureId: procId, stepId: newStepId });
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('roomId', String(roomId));
+            formData.append('procedureId', String(procId));
+            formData.append('stepId', String(newStepId));
+            const uploadRes = await apiFetch('/api/photos/upload', { method: 'POST', body: formData });
+            if (!uploadRes.ok) throw new Error('Upload failed');
+            const photo = await uploadRes.json();
             newPhotoIds.push(photo.id);
           }
           await updateStep(newStepId, { photoIds: newPhotoIds });
