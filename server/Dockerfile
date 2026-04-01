@@ -23,6 +23,9 @@ RUN npm run build
 # Stage 3: Production
 FROM node:22-alpine
 WORKDIR /app
+
+RUN apk add --no-cache su-exec
+
 COPY server/package*.json ./
 RUN npm ci --only=production
 
@@ -32,18 +35,18 @@ COPY --from=server-builder /app/dist ./dist
 # Copy built frontend into dist/public so Express can serve it
 COPY --from=frontend-builder /app/dist ./dist/public
 
-# Create data directories
-RUN mkdir -p /data/db /data/photos /data/backups
-
-# Non-root user
+# Create app user (entrypoint drops to this user after fixing permissions)
 RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001 && \
-    chown -R nodejs:nodejs /data
-USER nodejs
+    adduser -S nodejs -u 1001
+
+# Copy entrypoint
+COPY server/entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
 EXPOSE 3001
 
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
   CMD node -e "require('http').get('http://127.0.0.1:3001/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["node", "dist/index.js"]
