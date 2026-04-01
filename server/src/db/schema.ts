@@ -248,12 +248,11 @@ export function initializeDatabase(): void {
       updatedAt TEXT NOT NULL
     );
 
-    -- Indexes
+    -- Indexes for columns that exist in CREATE TABLE
     CREATE INDEX IF NOT EXISTS idx_palaces_userId ON palaces(userId);
     CREATE INDEX IF NOT EXISTS idx_room_hotspots_palaceId ON room_hotspots(palaceId);
     CREATE INDEX IF NOT EXISTS idx_room_hotspots_userId ON room_hotspots(userId);
     CREATE INDEX IF NOT EXISTS idx_rooms_userId ON rooms(userId);
-    CREATE INDEX IF NOT EXISTS idx_rooms_palaceId ON rooms(palaceId);
     CREATE INDEX IF NOT EXISTS idx_schedules_roomId ON schedules(roomId);
     CREATE INDEX IF NOT EXISTS idx_schedules_userId ON schedules(userId);
     CREATE INDEX IF NOT EXISTS idx_task_logs_roomId ON task_logs(roomId);
@@ -261,7 +260,6 @@ export function initializeDatabase(): void {
     CREATE INDEX IF NOT EXISTS idx_procedure_steps_procedureId ON procedure_steps(procedureId);
     CREATE INDEX IF NOT EXISTS idx_supplies_procedureId ON supplies(procedureId);
     CREATE INDEX IF NOT EXISTS idx_photos_roomId ON photos(roomId);
-    CREATE INDEX IF NOT EXISTS idx_photos_noteId ON photos(noteId);
     CREATE INDEX IF NOT EXISTS idx_notes_roomId ON notes(roomId);
     CREATE INDEX IF NOT EXISTS idx_refs_roomId ON refs(roomId);
     CREATE INDEX IF NOT EXISTS idx_inventory_roomId ON inventory(roomId);
@@ -269,38 +267,32 @@ export function initializeDatabase(): void {
     CREATE INDEX IF NOT EXISTS idx_refresh_tokens_token ON refresh_tokens(token);
   `);
 
-  // Safe ALTER TABLE for palaceId column on rooms (for existing databases)
+  // --- ALTER TABLE migrations for existing databases ---
+  // These must run BEFORE indexes that reference the new columns
+
   try {
     db.exec(`ALTER TABLE rooms ADD COLUMN palaceId INTEGER REFERENCES palaces(id)`);
-  } catch {
-    // Column already exists — ignore
-  }
+  } catch { /* Column already exists */ }
 
-  // Add imageUrl to palaces (for existing databases)
   try {
     db.exec(`ALTER TABLE palaces ADD COLUMN imageUrl TEXT`);
-  } catch {
-    // Column already exists — ignore
-  }
+  } catch { /* Column already exists */ }
 
-  // Add photoId to supplies (Feature 2: supply photos)
   try {
     db.exec(`ALTER TABLE supplies ADD COLUMN photoId TEXT`);
-  } catch {
-    // Column already exists — ignore
-  }
+  } catch { /* Column already exists */ }
 
-  // Add photoIds to notes (Feature 3: note image attachments)
   try {
     db.exec(`ALTER TABLE notes ADD COLUMN photoIds TEXT DEFAULT '[]'`);
-  } catch {
-    // Column already exists — ignore
-  }
+  } catch { /* Column already exists */ }
 
-  // Add noteId to photos (Feature 3: photo-note association)
   try {
     db.exec(`ALTER TABLE photos ADD COLUMN noteId INTEGER`);
-  } catch {
-    // Column already exists — ignore
-  }
+  } catch { /* Column already exists */ }
+
+  // --- Indexes that depend on ALTER TABLE columns ---
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_rooms_palaceId ON rooms(palaceId);
+    CREATE INDEX IF NOT EXISTS idx_photos_noteId ON photos(noteId);
+  `);
 }
