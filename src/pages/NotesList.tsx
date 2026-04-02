@@ -91,14 +91,15 @@ export function NotesList() {
 
   /** Check if note content has HTML (TipTap-created) vs plain text (legacy) */
   function isHtmlContent(text: string): boolean {
-    return /<[a-z][\s\S]*>/i.test(text);
+    return text.trimStart().startsWith('<');
   }
 
-  /** Inject auth tokens into photo URLs in HTML content for display */
+  /** Inject fresh auth tokens into photo URLs in stored HTML */
   function renderHtmlContent(html: string): string {
+    // Match any img src that points to our photo API, with or without existing token
     return html.replace(
-      /src="\/api\/photos\/([^"/]+)\/full(?:\?[^"]*)?"/g,
-      (_match, photoId) => `src="${getPhotoUrl(photoId)}"`
+      /src="(\/api\/photos\/([a-f0-9-]+)\/full[^"]*)"/gi,
+      (_match, _fullUrl, photoId) => `src="${getPhotoUrl(photoId)}"`
     );
   }
 
