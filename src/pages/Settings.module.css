@@ -139,15 +139,84 @@
   margin-bottom: var(--space-md);
 }
 
-.userRow {
+.accountActions {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
+  gap: var(--space-sm);
+}
+
+.inlineForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+  padding: var(--space-md);
+  background: var(--color-bg-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-md);
+}
+
+.formActions {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.inlineAction {
+  background: none;
+  border: none;
+  font-size: 0.75rem;
+  font-family: var(--font-sans);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  padding: 2px 0;
+}
+
+.inlineAction:hover {
+  color: var(--color-primary);
+}
+
+.dangerAction:hover {
+  color: var(--color-danger);
+}
+
+.userCard {
   padding: var(--space-sm) var(--space-md);
   background: var(--color-bg-surface);
   border-radius: var(--radius-md);
+}
+
+.userInfo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  margin-bottom: 4px;
+}
+
+.userName {
   font-size: 0.8125rem;
+  font-weight: 600;
   color: var(--color-text);
+}
+
+.userUsername {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.userActions {
+  display: flex;
+  gap: var(--space-md);
+}
+
+.userEditForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.resetLabel {
+  font-size: 0.8125rem;
+  color: var(--color-text-secondary);
+  margin: 0;
 }
 
 .registerForm {

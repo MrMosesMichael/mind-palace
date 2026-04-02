@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
-import { login as apiLogin, logout as apiLogout, isAuthenticated, getUser, clearTokens } from '../services/apiClient';
+import { login as apiLogin, logout as apiLogout, isAuthenticated, getUser, setUser as storeUser, clearTokens } from '../services/apiClient';
 
 interface User {
   id: number;
@@ -14,6 +14,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  refreshUser: (updated: User) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -45,6 +46,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
   }, []);
 
+  const refreshUser = useCallback((updated: User) => {
+    storeUser(updated);
+    setUser(updated);
+  }, []);
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -52,6 +58,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isLoading,
       login,
       logout,
+      refreshUser,
     }}>
       {children}
     </AuthContext.Provider>

@@ -22,11 +22,20 @@ export function Settings() {
   const settings = settingsArr[0];
 
   const importRef = useRef<HTMLInputElement>(null);
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
 
   const [isExporting, setIsExporting] = useState(false);
   const [isImporting, setIsImporting] = useState(false);
   const [statusMsg, setStatusMsg] = useState('');
+
+  // Own profile editing
+  const [editingProfile, setEditingProfile] = useState(false);
+  const [profileName, setProfileName] = useState('');
+
+  // Own password change
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPasswordSelf, setNewPasswordSelf] = useState('');
 
   // User management state (admin only)
   const [showRegister, setShowRegister] = useState(false);
@@ -34,11 +43,22 @@ export function Settings() {
   const [newPassword, setNewPassword] = useState('');
   const [newDisplayName, setNewDisplayName] = useState('');
   const [users, setUsers] = useState<any[]>([]);
+  const [editingUserId, setEditingUserId] = useState<number | null>(null);
+  const [editUsername, setEditUsername] = useState('');
+  const [editDisplayName, setEditDisplayName] = useState('');
+  const [editRole, setEditRole] = useState('user');
+  const [resetPasswordUserId, setResetPasswordUserId] = useState<number | null>(null);
+  const [resetPasswordValue, setResetPasswordValue] = useState('');
+
+  async function loadUsers() {
+    try {
+      const r = await apiFetch('/api/users');
+      setUsers(await r.json());
+    } catch { /* ignore */ }
+  }
 
   useEffect(() => {
-    if (user?.role === 'admin') {
-      apiFetch('/api/users').then(r => r.json()).then(setUsers).catch(() => {});
-    }
+    if (user?.role === 'admin') loadUsers();
   }, [user?.role]);
 
   // Apply theme on change
@@ -117,6 +137,106 @@ export function Settings() {
       setStatusMsg('All data cleared.');
     } catch (err) {
       setStatusMsg(`Clear failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+  }
+
+  async function handleUpdateProfile(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      const res = await apiFetch('/api/auth/profile', {
+        method: 'PATCH',
+        body: JSON.stringify({ displayName: profileName }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      const updated = await res.json();
+      refreshUser(updated);
+      setEditingProfile(false);
+      setStatusMsg('Profile updated.');
+    } catch (err) {
+      setStatusMsg(`Update failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+  }
+
+  async function handleChangePassword(e: React.FormEvent) {
+    e.preventDefault();
+    try {
+      const res = await apiFetch('/api/auth/password', {
+        method: 'PATCH',
+        body: JSON.stringify({ currentPassword, newPassword: newPasswordSelf }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      setChangingPassword(false);
+      setCurrentPassword('');
+      setNewPasswordSelf('');
+      setStatusMsg('Password changed. You may need to log in again on other devices.');
+    } catch (err) {
+      setStatusMsg(`Password change failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+  }
+
+  function startEditUser(u: any) {
+    setEditingUserId(u.id);
+    setEditDisplayName(u.displayName);
+    setEditUsername(u.username);
+    setEditRole(u.role);
+    setResetPasswordUserId(null);
+  }
+
+  function cancelEditUser() {
+    setEditingUserId(null);
+    setEditDisplayName('');
+    setEditUsername('');
+    setEditRole('user');
+  }
+
+  async function handleSaveUser(e: React.FormEvent) {
+    e.preventDefault();
+    if (!editingUserId) return;
+    try {
+      const res = await apiFetch(`/api/users/${editingUserId}`, {
+        method: 'PUT',
+        body: JSON.stringify({ displayName: editDisplayName, username: editUsername, role: editRole }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      // If editing self, refresh auth context
+      if (editingUserId === user?.id) {
+        const updated = await res.json();
+        refreshUser(updated);
+      }
+      cancelEditUser();
+      await loadUsers();
+      setStatusMsg('User updated.');
+    } catch (err) {
+      setStatusMsg(`Update failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+  }
+
+  async function handleResetPassword(e: React.FormEvent) {
+    e.preventDefault();
+    if (!resetPasswordUserId) return;
+    try {
+      const res = await apiFetch(`/api/users/${resetPasswordUserId}/password`, {
+        method: 'PATCH',
+        body: JSON.stringify({ newPassword: resetPasswordValue }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error);
+      setResetPasswordUserId(null);
+      setResetPasswordValue('');
+      setStatusMsg('Password reset. User will need to log in again.');
+    } catch (err) {
+      setStatusMsg(`Reset failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+  }
+
+  async function handleDeleteUser(u: any) {
+    if (!window.confirm(`Delete user "${u.displayName}" (${u.username})? All their data will be permanently removed.`)) return;
+    try {
+      const res = await apiFetch(`/api/users/${u.id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error((await res.json()).error);
+      await loadUsers();
+      setStatusMsg(`User "${u.displayName}" deleted.`);
+    } catch (err) {
+      setStatusMsg(`Delete failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
     }
   }
 
@@ -220,13 +340,64 @@ export function Settings() {
         {/* Account */}
         <section className={styles.section}>
           <h2 className={styles.sectionTitle}>Account</h2>
-          <div className={styles.accountInfo}>
-            <span className={styles.accountName}>{user?.displayName ?? user?.username}</span>
-            <span className={styles.accountRole}>{user?.role}</span>
-          </div>
-          <Button variant="ghost" size="sm" onClick={logout}>
-            Log Out
-          </Button>
+          {editingProfile ? (
+            <form className={styles.inlineForm} onSubmit={handleUpdateProfile}>
+              <Input
+                label="Display Name"
+                value={profileName}
+                onChange={(e) => setProfileName(e.target.value)}
+                required
+              />
+              <div className={styles.formActions}>
+                <Button type="submit" size="sm">Save</Button>
+                <Button type="button" size="sm" variant="ghost" onClick={() => setEditingProfile(false)}>Cancel</Button>
+              </div>
+            </form>
+          ) : (
+            <div className={styles.accountInfo}>
+              <span className={styles.accountName}>{user?.displayName ?? user?.username}</span>
+              <span className={styles.accountRole}>{user?.role}</span>
+              <button
+                className={styles.inlineAction}
+                onClick={() => { setProfileName(user?.displayName ?? ''); setEditingProfile(true); }}
+              >
+                Edit
+              </button>
+            </div>
+          )}
+          <p className={styles.meta}>Username: {user?.username}</p>
+
+          {changingPassword ? (
+            <form className={styles.inlineForm} onSubmit={handleChangePassword}>
+              <Input
+                label="Current Password"
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                required
+              />
+              <Input
+                label="New Password"
+                type="password"
+                value={newPasswordSelf}
+                onChange={(e) => setNewPasswordSelf(e.target.value)}
+                required
+              />
+              <div className={styles.formActions}>
+                <Button type="submit" size="sm">Change Password</Button>
+                <Button type="button" size="sm" variant="ghost" onClick={() => { setChangingPassword(false); setCurrentPassword(''); setNewPasswordSelf(''); }}>Cancel</Button>
+              </div>
+            </form>
+          ) : (
+            <div className={styles.accountActions}>
+              <Button variant="ghost" size="sm" onClick={() => setChangingPassword(true)}>
+                Change Password
+              </Button>
+              <Button variant="ghost" size="sm" onClick={logout}>
+                Log Out
+              </Button>
+            </div>
+          )}
         </section>
 
         {/* User Management (admin only) */}
@@ -236,9 +407,56 @@ export function Settings() {
             <p className={styles.description}>Manage who has access to the warehouse.</p>
             <div className={styles.list}>
               {users.map((u: any) => (
-                <div key={u.id} className={styles.userRow}>
-                  <span>{u.displayName} ({u.username})</span>
-                  <span className={styles.accountRole}>{u.role}</span>
+                <div key={u.id} className={styles.userCard}>
+                  {editingUserId === u.id ? (
+                    <form className={styles.userEditForm} onSubmit={handleSaveUser}>
+                      <Input label="Display Name" value={editDisplayName} onChange={e => setEditDisplayName(e.target.value)} required />
+                      <Input label="Username" value={editUsername} onChange={e => setEditUsername(e.target.value)} required />
+                      <Select
+                        label="Role"
+                        value={editRole}
+                        onChange={e => setEditRole(e.target.value)}
+                        options={[
+                          { value: 'user', label: 'User' },
+                          { value: 'admin', label: 'Admin' },
+                        ]}
+                      />
+                      <div className={styles.formActions}>
+                        <Button type="submit" size="sm">Save</Button>
+                        <Button type="button" size="sm" variant="ghost" onClick={cancelEditUser}>Cancel</Button>
+                      </div>
+                    </form>
+                  ) : resetPasswordUserId === u.id ? (
+                    <form className={styles.userEditForm} onSubmit={handleResetPassword}>
+                      <p className={styles.resetLabel}>Reset password for <strong>{u.displayName}</strong></p>
+                      <Input
+                        label="New Password"
+                        type="password"
+                        value={resetPasswordValue}
+                        onChange={e => setResetPasswordValue(e.target.value)}
+                        required
+                      />
+                      <div className={styles.formActions}>
+                        <Button type="submit" size="sm">Reset Password</Button>
+                        <Button type="button" size="sm" variant="ghost" onClick={() => { setResetPasswordUserId(null); setResetPasswordValue(''); }}>Cancel</Button>
+                      </div>
+                    </form>
+                  ) : (
+                    <>
+                      <div className={styles.userInfo}>
+                        <span className={styles.userName}>{u.displayName}</span>
+                        <span className={styles.userUsername}>@{u.username}</span>
+                        <span className={styles.accountRole}>{u.role}</span>
+                      </div>
+                      <div className={styles.userActions}>
+                        <button className={styles.inlineAction} onClick={() => startEditUser(u)}>Edit</button>
+                        <button className={styles.inlineAction} onClick={() => { setResetPasswordUserId(u.id); setEditingUserId(null); setResetPasswordValue(''); }}>Reset Password</button>
+                        {u.id !== user?.id && (
+                          <button className={`${styles.inlineAction} ${styles.dangerAction}`} onClick={() => handleDeleteUser(u)}>Delete</button>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
               ))}
             </div>
@@ -252,15 +470,14 @@ export function Settings() {
                   });
                   setShowRegister(false);
                   setNewUsername(''); setNewPassword(''); setNewDisplayName('');
-                  const r = await apiFetch('/api/users');
-                  setUsers(await r.json());
+                  await loadUsers();
                   setStatusMsg('User created.');
                 } catch { setStatusMsg('Failed to create user.'); }
               }}>
                 <Input label="Display Name" value={newDisplayName} onChange={e => setNewDisplayName(e.target.value)} required />
                 <Input label="Username" value={newUsername} onChange={e => setNewUsername(e.target.value)} required />
                 <Input label="Password" type="password" value={newPassword} onChange={e => setNewPassword(e.target.value)} required />
-                <div className={styles.row}>
+                <div className={styles.formActions}>
                   <Button type="submit" size="sm">Create</Button>
                   <Button type="button" size="sm" variant="ghost" onClick={() => setShowRegister(false)}>Cancel</Button>
                 </div>

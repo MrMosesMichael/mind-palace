@@ -143,6 +143,21 @@ router.get('/me', authenticate, (req: Request, res: Response) => {
   res.json(user);
 });
 
+// PATCH /api/auth/profile — Edit own display name
+router.patch('/profile', authenticate, (req: Request, res: Response) => {
+  const { displayName } = req.body;
+  if (!displayName) {
+    res.status(400).json({ error: 'Display name required' });
+    return;
+  }
+
+  const now = new Date().toISOString();
+  db.prepare('UPDATE users SET displayName = ?, updatedAt = ? WHERE id = ?').run(displayName, now, req.user!.userId);
+
+  const user = db.prepare('SELECT id, username, displayName, role FROM users WHERE id = ?').get(req.user!.userId) as any;
+  res.json(user);
+});
+
 // PATCH /api/auth/password — Change own password
 router.patch('/password', authenticate, (req: Request, res: Response) => {
   const { currentPassword, newPassword } = req.body;

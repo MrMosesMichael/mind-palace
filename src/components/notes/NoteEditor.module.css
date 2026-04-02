@@ -97,11 +97,43 @@
   height: 0;
 }
 
+/* Image size buttons (appear when image selected) */
+.sizeBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 6px;
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-muted);
+  font-family: var(--font-sans);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.sizeBtn:hover {
+  background: var(--color-bg-surface);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+.sizeBtnActive {
+  background: var(--color-primary-muted);
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
 /* Inline image in editor */
 .inlineImage {
   max-width: 100%;
   border-radius: var(--radius-sm);
   margin: 0.5em 0;
+  cursor: pointer;
 }
 
 /* Selected image highlight */
