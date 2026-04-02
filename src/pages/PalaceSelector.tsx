@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
@@ -44,18 +44,6 @@ export function PalaceSelector() {
     }
     return counts;
   }, [urgentReminders]);
-
-  // Auto-redirect if exactly 1 palace
-  useEffect(() => {
-    if (palaces.length === 1 && palaces[0].id) {
-      navigate(`/palace/${palaces[0].id}`, { replace: true });
-    }
-  }, [palaces, navigate]);
-
-  // Don't render while auto-redirecting
-  if (palaces.length === 1) {
-    return null;
-  }
 
   return (
     <div className={styles.page}>
