@@ -1,11 +1,11 @@
-import type { Schedule, Room } from '../types';
+import type { Schedule, Room, Vehicle } from '../types';
 
 export type ScheduleStatus = 'overdue' | 'due_soon' | 'ok' | 'unknown';
 
 const DEFAULT_LEAD_DAYS = 7;
 const DEFAULT_LEAD_MILES = 500;
 
-export function getScheduleStatus(schedule: Schedule, room?: Room): ScheduleStatus {
+export function getScheduleStatus(schedule: Schedule, room?: Room, vehicle?: Vehicle): ScheduleStatus {
   if (!schedule.isActive) return 'unknown';
 
   // Time-based check
@@ -19,9 +19,14 @@ export function getScheduleStatus(schedule: Schedule, room?: Room): ScheduleStat
     return 'ok';
   }
 
-  // Mileage-based check
-  if (schedule.nextDueValue && room) {
-    const currentMileage = Number((room.metadata as Record<string, unknown>)?.currentMileage ?? 0);
+  // Mileage-based check — prefer vehicle mileage, fall back to room metadata
+  if (schedule.nextDueValue) {
+    let currentMileage = 0;
+    if (vehicle?.currentMileage != null) {
+      currentMileage = Number(vehicle.currentMileage);
+    } else if (room) {
+      currentMileage = Number((room.metadata as Record<string, unknown>)?.currentMileage ?? 0);
+    }
     if (currentMileage <= 0) return 'unknown';
 
     const remaining = schedule.nextDueValue - currentMileage;

@@ -18,6 +18,7 @@ export const TABLE_MAP: Record<string, string> = {
   references: 'refs',
   photos: 'photos',
   notes: 'notes',
+  vehicles: 'vehicles',
   reminders: 'reminders',
   appSettings: 'app_settings',
 };
@@ -114,8 +115,9 @@ export function apiNameFromSqlTable(sqlTable: string): string | undefined {
 export const FILTER_COLUMNS: Record<string, Record<string, string>> = {
   rooms: { palaceId: 'palaceId', isArchived: 'isArchived' },
   room_hotspots: { palaceId: 'palaceId', roomId: 'roomId' },
-  schedules: { roomId: 'roomId', isActive: 'isActive' },
-  task_logs: { roomId: 'roomId', scheduleId: 'scheduleId' },
+  schedules: { roomId: 'roomId', isActive: 'isActive', vehicleId: 'vehicleId' },
+  task_logs: { roomId: 'roomId', scheduleId: 'scheduleId', vehicleId: 'vehicleId' },
+  vehicles: { roomId: 'roomId' },
   procedures: { roomId: 'roomId' },
   procedure_steps: { procedureId: 'procedureId' },
   supplies: { procedureId: 'procedureId' },

@@ -125,6 +125,40 @@
   line-height: 1.3;
 }
 
+/* ── Vehicle section (garage rooms) ── */
+.vehicleSection {
+  margin-bottom: var(--space-lg);
+}
+
+.vehicleSectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--space-sm);
+}
+
+.vehicleSectionTitle {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0;
+}
+
+.vehicleList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.vehicleEmpty {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  text-align: center;
+  padding: var(--space-md);
+}
+
 .dangerZone {
   padding-top: var(--space-xl);
   border-top: 1px solid var(--color-border-subtle);

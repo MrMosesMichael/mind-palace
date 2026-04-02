@@ -1,5 +1,6 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
 import { Button } from '../components/ui/Button';
 import { EmptyState } from '../components/ui/EmptyState';
@@ -10,6 +11,7 @@ import { useProcedureReferences } from '../hooks/useReferences';
 import { usePhotos } from '../hooks/usePhotos';
 import { useRoom } from '../hooks/useRooms';
 import { getModule } from '../modules';
+import { apiFetch } from '../services/apiClient';
 import { DIFFICULTY_LABELS } from '../lib/constants';
 import { lore } from '../lib/lore';
 import styles from './ProcedureDetail.module.css';
@@ -24,7 +26,10 @@ export function ProcedureDetail() {
   const room = useRoom(roomId);
   const mod = room ? getModule(room.moduleType) : undefined;
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const heroPhotoInputRef = useRef<HTMLInputElement>(null);
+  const stepPhotoInputRef = useRef<HTMLInputElement>(null);
+  const [targetStepId, setTargetStepId] = useState<number | null>(null);
   const { addPhoto } = usePhotos({ roomId, procedureId });
   const { references } = useProcedureReferences(procedureId);
 
@@ -36,6 +41,29 @@ export function ProcedureDetail() {
     const files = e.target.files;
     if (!files || files.length === 0 || !roomId || !procedureId) return;
     await addPhoto(files[0], {});
+    e.target.value = '';
+  }
+
+  function handleAddStepPhoto(stepId: number) {
+    setTargetStepId(stepId);
+    stepPhotoInputRef.current?.click();
+  }
+
+  async function handleStepPhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files;
+    if (!files || files.length === 0 || targetStepId === null) return;
+    try {
+      const formData = new FormData();
+      formData.append('file', files[0]);
+      if (roomId) formData.append('roomId', String(roomId));
+      formData.append('procedureId', String(procedureId));
+      formData.append('stepId', String(targetStepId));
+      await apiFetch('/api/photos/upload', { method: 'POST', body: formData });
+      queryClient.invalidateQueries({ queryKey: ['photos'] });
+    } catch (err) {
+      console.error('Step photo upload failed:', err);
+    }
+    setTargetStepId(null);
     e.target.value = '';
   }
 
@@ -71,13 +99,20 @@ export function ProcedureDetail() {
         }
       />
 
-      {/* Hidden file input for hero photo */}
+      {/* Hidden file inputs for photo uploads */}
       <input
         ref={heroPhotoInputRef}
         type="file"
         accept="image/*"
         style={{ display: 'none' }}
         onChange={handleHeroPhotoChange}
+      />
+      <input
+        ref={stepPhotoInputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={handleStepPhotoChange}
       />
 
       <div className={styles.content}>
@@ -92,6 +127,7 @@ export function ProcedureDetail() {
             roomId={roomId}
             procedureId={procedureId}
             onAddHeroPhoto={handleHeroPhotoAdd}
+            onAddStepPhoto={handleAddStepPhoto}
           />
         ) : (
           <>
@@ -221,7 +257,11 @@ export function ProcedureDetail() {
                         )}
 
                         {/* Step photos */}
-                        <PhotoThumbnail stepId={step.id} roomId={roomId} />
+                        <PhotoThumbnail
+                          stepId={step.id}
+                          roomId={roomId}
+                          onAdd={step.id ? () => handleAddStepPhoto(step.id!) : undefined}
+                        />
                       </div>
                     </li>
                   ))}

@@ -13,7 +13,7 @@
   margin-bottom: var(--space-lg);
 }
 
-.textareaWrap {
+.editorWrap {
   display: flex;
   flex-direction: column;
   gap: var(--space-xs);
@@ -23,30 +23,6 @@
   font-size: 0.8125rem;
   font-weight: 500;
   color: var(--color-text-secondary);
-}
-
-.textarea {
-  width: 100%;
-  padding: var(--space-sm) var(--space-md);
-  background: var(--color-bg-surface);
-  color: var(--color-text);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  font-family: var(--font-sans);
-  font-size: 0.9375rem;
-  resize: vertical;
-  min-height: 100px;
-  box-sizing: border-box;
-}
-
-.textarea::placeholder {
-  color: var(--color-text-muted);
-}
-
-.textarea:focus {
-  outline: none;
-  border-color: var(--color-border-focus);
-  box-shadow: var(--shadow-glow);
 }
 
 .section {
@@ -127,33 +103,37 @@
   color: var(--color-danger);
 }
 
-/* Photo attachment area */
-.photoAttach {
-  display: flex;
-  align-items: center;
-  gap: var(--space-sm);
-  flex-wrap: wrap;
-}
-
-.attachBtn {
-  font-size: 0.75rem;
-  padding: 4px 10px;
-  border-radius: var(--radius-sm);
-  background: transparent;
-  border: 1px dashed var(--color-border);
-  color: var(--color-text-muted);
-  cursor: pointer;
-  font-family: var(--font-sans);
-  transition: all var(--transition-fast);
-}
-
-.attachBtn:hover {
-  border-color: var(--color-primary-muted);
+/* HTML note content (TipTap-created notes) */
+.noteContentHtml {
+  font-size: 0.875rem;
   color: var(--color-text-secondary);
+  line-height: 1.6;
+  margin: 0 0 var(--space-sm) 0;
 }
 
-.pendingLabel {
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-  font-style: italic;
+.noteContentHtml h3 {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0.5em 0 0.25em 0;
+}
+
+.noteContentHtml ul,
+.noteContentHtml ol {
+  padding-left: 1.25em;
+  margin: 0.25em 0;
+}
+
+.noteContentHtml img {
+  max-width: 100%;
+  border-radius: var(--radius-sm);
+  margin: 0.5em 0;
+}
+
+.noteContentHtml p {
+  margin: 0 0 0.5em 0;
+}
+
+.noteContentHtml p:last-child {
+  margin-bottom: 0;
 }

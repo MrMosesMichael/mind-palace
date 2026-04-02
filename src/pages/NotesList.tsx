@@ -1,13 +1,16 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { PageHeader } from '../components/layout/PageHeader';
 import { EmptyState } from '../components/ui/EmptyState';
 import { Button } from '../components/ui/Button';
 import { Input } from '../components/ui/Input';
 import { PhotoThumbnail } from '../components/photo/PhotoThumbnail';
+import { NoteEditor } from '../components/notes/NoteEditor';
 import { useNotes } from '../hooks/useNotes';
 import { useRoom } from '../hooks/useRooms';
 import { apiFetch } from '../services/apiClient';
+import { getPhotoUrl } from '../hooks/usePhotos';
 import { formatDate } from '../lib/formatters';
 import { lore } from '../lib/lore';
 import styles from './NotesList.module.css';
@@ -17,19 +20,17 @@ export function NotesList() {
   const roomId = Number(id);
   const room = useRoom(roomId);
   const { notes, addNote, updateNote, deleteNote } = useNotes(roomId);
+  const queryClient = useQueryClient();
 
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [pendingPhotos, setPendingPhotos] = useState<File[]>([]);
-  const photoInputRef = useRef<HTMLInputElement>(null);
 
   function startEdit(note: { id?: number; title?: string; content: string }) {
     setEditingId(note.id ?? null);
     setTitle(note.title ?? '');
     setContent(note.content);
-    setPendingPhotos([]);
     setShowForm(true);
   }
 
@@ -37,71 +38,42 @@ export function NotesList() {
     setEditingId(null);
     setTitle('');
     setContent('');
-    setPendingPhotos([]);
     setShowForm(false);
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (editingId) {
-      // Editing existing note — save photos immediately
-      if (pendingPhotos.length > 0) {
-        const existingNote = notes.find((n) => n.id === editingId);
-        const existingPhotoIds = existingNote?.photoIds ?? [];
-        const newPhotoIds: string[] = [...existingPhotoIds];
-        for (const file of pendingPhotos) {
-          const formData = new FormData();
-          formData.append('file', file);
-          formData.append('roomId', String(roomId));
-          formData.append('noteId', String(editingId));
-          const res = await apiFetch('/api/photos/upload', { method: 'POST', body: formData });
-          if (!res.ok) throw new Error('Upload failed');
-          const photo = await res.json();
-          newPhotoIds.push(photo.id);
-        }
-        await updateNote(editingId, {
-          title: title || undefined,
-          content,
-          photoIds: newPhotoIds,
-        });
-      } else {
-        await updateNote(editingId, {
-          title: title || undefined,
-          content,
-        });
-      }
+      await updateNote(editingId, {
+        title: title || undefined,
+        content,
+      });
     } else {
-      const noteId = await addNote({
+      await addNote({
         roomId,
         title: title || undefined,
         content,
         isPinned: false,
         photoIds: [],
       });
-      // Save pending photos for the new note
-      if (pendingPhotos.length > 0) {
-        const photoIds: string[] = [];
-        for (const file of pendingPhotos) {
-          const formData = new FormData();
-          formData.append('file', file);
-          formData.append('roomId', String(roomId));
-          formData.append('noteId', String(noteId));
-          const res = await apiFetch('/api/photos/upload', { method: 'POST', body: formData });
-          if (!res.ok) throw new Error('Upload failed');
-          const photo = await res.json();
-          photoIds.push(photo.id);
-        }
-        await updateNote(noteId, { photoIds });
-      }
     }
     resetForm();
   }
 
-  function handlePhotoInput(e: React.ChangeEvent<HTMLInputElement>) {
-    const files = e.target.files;
-    if (!files) return;
-    setPendingPhotos((prev) => [...prev, ...Array.from(files)]);
-    e.target.value = '';
+  async function handleImageInsert(file: File): Promise<string> {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('roomId', String(roomId));
+    if (editingId) formData.append('noteId', String(editingId));
+
+    const res = await apiFetch('/api/photos/upload', { method: 'POST', body: formData });
+    if (!res.ok) throw new Error('Upload failed');
+    const photo = await res.json();
+
+    queryClient.invalidateQueries({ queryKey: ['photos'] });
+
+    // Return the stable photo URL (getPhotoUrl includes auth token)
+    return getPhotoUrl(photo.id);
   }
 
   async function handleDelete(noteId: number) {
@@ -113,6 +85,19 @@ export function NotesList() {
 
   async function togglePin(noteId: number, currentPinned: boolean) {
     await updateNote(noteId, { isPinned: !currentPinned });
+  }
+
+  /** Check if note content has HTML (TipTap-created) vs plain text (legacy) */
+  function isHtmlContent(text: string): boolean {
+    return /<[a-z][\s\S]*>/i.test(text);
+  }
+
+  /** Inject auth tokens into photo URLs in HTML content for display */
+  function renderHtmlContent(html: string): string {
+    return html.replace(
+      /src="\/api\/photos\/([^"/]+)\/full(?:\?[^"]*)?"/g,
+      (_match, photoId) => `src="${getPhotoUrl(photoId)}"`
+    );
   }
 
   const pinnedNotes = notes.filter((n) => n.isPinned);
@@ -131,16 +116,6 @@ export function NotesList() {
         }
       />
 
-      {/* Hidden file input for photo attachments */}
-      <input
-        ref={photoInputRef}
-        type="file"
-        accept="image/*"
-        multiple
-        style={{ display: 'none' }}
-        onChange={handlePhotoInput}
-      />
-
       <div className={styles.content}>
         {showForm && (
           <form className={styles.form} onSubmit={handleSubmit}>
@@ -150,34 +125,13 @@ export function NotesList() {
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Quick note title"
             />
-            <div className={styles.textareaWrap}>
-              <label className={styles.label} htmlFor="note-content">Note</label>
-              <textarea
-                id="note-content"
-                className={styles.textarea}
-                value={content}
-                onChange={(e) => setContent(e.target.value)}
-                placeholder="Write your note..."
-                rows={5}
-                required
+            <div className={styles.editorWrap}>
+              <label className={styles.label}>Note</label>
+              <NoteEditor
+                content={content}
+                onChange={setContent}
+                onImageInsert={handleImageInsert}
               />
-            </div>
-            <div className={styles.photoAttach}>
-              <button
-                type="button"
-                className={styles.attachBtn}
-                onClick={() => photoInputRef.current?.click()}
-              >
-                Attach Photo
-              </button>
-              {pendingPhotos.length > 0 && (
-                <span className={styles.pendingLabel}>
-                  {pendingPhotos.length} photo{pendingPhotos.length > 1 ? 's' : ''} attached
-                </span>
-              )}
-              {editingId && (
-                <PhotoThumbnail noteId={editingId} roomId={roomId} />
-              )}
             </div>
             <Button type="submit" size="sm">
               {editingId ? 'Save' : 'Add Note'}
@@ -220,15 +174,24 @@ export function NotesList() {
               {note.title && <span className={styles.noteTitle}>{note.title}</span>}
               <span className={styles.date}>{formatDate(note.updatedAt)}</span>
             </div>
-            <p className={styles.noteContent}>{note.content}</p>
-            {/* Attached photos */}
-            <PhotoThumbnail noteId={note.id} roomId={roomId} />
+            {isHtmlContent(note.content) ? (
+              <div
+                className={styles.noteContentHtml}
+                dangerouslySetInnerHTML={{ __html: renderHtmlContent(note.content) }}
+              />
+            ) : (
+              <p className={styles.noteContent}>{note.content}</p>
+            )}
+            {/* Legacy photo attachments — only show for non-HTML notes */}
+            {!isHtmlContent(note.content) && (
+              <PhotoThumbnail noteId={note.id} roomId={roomId} />
+            )}
             <div className={styles.cardActions}>
               <button
                 className={styles.actionBtn}
                 onClick={() => togglePin(note.id!, note.isPinned)}
               >
-                {note.isPinned ? '📌 Unpin' : '📌 Pin'}
+                {note.isPinned ? '\uD83D\uDCCC Unpin' : '\uD83D\uDCCC Pin'}
               </button>
               <button className={styles.actionBtn} onClick={() => startEdit(note)}>
                 Edit

@@ -6,6 +6,7 @@ import { Input } from '../components/ui/Input';
 import { Select } from '../components/ui/Select';
 import { useSchedules, useSchedule } from '../hooks/useSchedules';
 import { useRoom } from '../hooks/useRooms';
+import { useVehicles } from '../hooks/useVehicles';
 import { getModule, getModuleIcon } from '../modules';
 import { lore } from '../lib/lore';
 import styles from './ScheduleForm.module.css';
@@ -32,6 +33,8 @@ export function ScheduleForm() {
   const room = useRoom(roomId);
   const mod = room ? getModule(room.moduleType) : undefined;
   const { addSchedule, updateSchedule, deleteSchedule } = useSchedules(roomId);
+  const isGarage = room?.moduleType === 'garage';
+  const { vehicles } = useVehicles(isGarage ? roomId : undefined);
   const navigate = useNavigate();
 
   const supportsMileage = mod?.scheduleTypes?.includes('mileage');
@@ -46,6 +49,7 @@ export function ScheduleForm() {
   const [lastCompletedDate, setLastCompletedDate] = useState('');
   const [lastCompletedValue, setLastCompletedValue] = useState('');
   const [nextDueDateManual, setNextDueDateManual] = useState('');
+  const [vehicleId, setVehicleId] = useState('');
   const [showDefaults, setShowDefaults] = useState(false);
 
   useEffect(() => {
@@ -60,6 +64,7 @@ export function ScheduleForm() {
       setLastCompletedDate(existingSchedule.lastCompletedDate ?? '');
       setLastCompletedValue(existingSchedule.lastCompletedValue?.toString() ?? '');
       setNextDueDateManual(existingSchedule.nextDueDate ?? '');
+      setVehicleId(existingSchedule.vehicleId?.toString() ?? '');
     }
   }, [existingSchedule]);
 
@@ -104,6 +109,7 @@ export function ScheduleForm() {
 
     const data = {
       roomId,
+      vehicleId: vehicleId ? Number(vehicleId) : undefined,
       name,
       description: description || undefined,
       triggerType: triggerType as 'time' | 'mileage',
@@ -154,6 +160,22 @@ export function ScheduleForm() {
       )}
 
       <form className={styles.form} onSubmit={handleSubmit}>
+        {/* Vehicle selector for garage rooms */}
+        {isGarage && vehicles.length > 0 && (
+          <Select
+            label="Vehicle"
+            value={vehicleId}
+            onChange={(e) => setVehicleId(e.target.value)}
+            options={[
+              { value: '', label: 'All vehicles / General' },
+              ...vehicles.map((v) => ({
+                value: String(v.id),
+                label: [v.name, v.year, v.make, v.model].filter(Boolean).join(' — '),
+              })),
+            ]}
+          />
+        )}
+
         {/* Default schedule suggestions */}
         {!isEditing && mod?.defaultSchedules && mod.defaultSchedules.length > 0 && (
           <div className={styles.defaults}>

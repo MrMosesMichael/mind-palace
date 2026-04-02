@@ -7,6 +7,7 @@ import { Select } from '../components/ui/Select';
 import { useTaskLogs, useTaskLog } from '../hooks/useTaskLogs';
 import { useSchedules } from '../hooks/useSchedules';
 import { useRoom } from '../hooks/useRooms';
+import { useVehicles } from '../hooks/useVehicles';
 import { getModule } from '../modules';
 import { lore } from '../lib/lore';
 import { todayISO } from '../lib/formatters';
@@ -21,6 +22,8 @@ export function TaskLogForm() {
   const mod = room ? getModule(room.moduleType) : undefined;
   const { activeSchedules } = useSchedules(roomId);
   const { addTaskLog, updateTaskLog, deleteTaskLog } = useTaskLogs(roomId);
+  const isGarage = room?.moduleType === 'garage';
+  const { vehicles } = useVehicles(isGarage ? roomId : undefined);
   const navigate = useNavigate();
 
   const [title, setTitle] = useState('');
@@ -31,15 +34,16 @@ export function TaskLogForm() {
   const [cost, setCost] = useState('');
   const [laborHours, setLaborHours] = useState('');
   const [performedBy, setPerformedBy] = useState('self');
+  const [vehicleId, setVehicleId] = useState('');
   const [notes, setNotes] = useState('');
 
-  // Pre-fill tracking value from room's current mileage
+  // Pre-fill tracking value from selected vehicle's mileage
   useEffect(() => {
-    if (!isEditing && room && mod?.trackingUnit) {
-      const current = (room.metadata as Record<string, unknown>)?.currentMileage;
-      if (current) setTrackingValue(String(current));
+    if (!isEditing && mod?.trackingUnit && vehicleId) {
+      const vehicle = vehicles.find((v) => v.id === Number(vehicleId));
+      if (vehicle?.currentMileage) setTrackingValue(String(vehicle.currentMileage));
     }
-  }, [room, mod, isEditing]);
+  }, [vehicleId, vehicles, mod, isEditing]);
 
   // Auto-set title when selecting a schedule
   useEffect(() => {
@@ -63,6 +67,7 @@ export function TaskLogForm() {
       setLaborHours(existingLog.laborHours?.toString() ?? '');
       setPerformedBy(existingLog.performedBy);
       setNotes(existingLog.notes ?? '');
+      setVehicleId(existingLog.vehicleId?.toString() ?? '');
     }
   }, [existingLog]);
 
@@ -71,6 +76,7 @@ export function TaskLogForm() {
 
     const data = {
       roomId,
+      vehicleId: vehicleId ? Number(vehicleId) : undefined,
       title,
       description: description || undefined,
       date,
@@ -113,6 +119,22 @@ export function TaskLogForm() {
       />
 
       <form className={styles.form} onSubmit={handleSubmit}>
+        {/* Vehicle selector for garage rooms */}
+        {isGarage && vehicles.length > 0 && (
+          <Select
+            label="Vehicle"
+            value={vehicleId}
+            onChange={(e) => setVehicleId(e.target.value)}
+            options={[
+              { value: '', label: 'General / No vehicle' },
+              ...vehicles.map((v) => ({
+                value: String(v.id),
+                label: [v.name, v.year, v.make, v.model].filter(Boolean).join(' — '),
+              })),
+            ]}
+          />
+        )}
+
         {/* Link to schedule */}
         {activeSchedules.length > 0 && (
           <Select

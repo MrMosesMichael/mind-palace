@@ -25,18 +25,18 @@ export function useTaskLogs(roomId: number | undefined) {
       queryClient.invalidateQueries({ queryKey: ['schedules'] });
     }
 
-    // Update room's current mileage if tracking value provided
-    if (log.trackingValue !== undefined && log.roomId) {
+    // Update vehicle's currentMileage if tracking value provided and vehicle is linked
+    if (log.trackingValue !== undefined && log.vehicleId) {
       try {
-        const room = await apiGet<{ metadata?: Record<string, unknown> }>(
-          `/api/crud/rooms/${log.roomId}`
+        const vehicle = await apiGet<{ currentMileage?: number }>(
+          `/api/crud/vehicles/${log.vehicleId}`
         );
-        const currentMileage = Number(room.metadata?.currentMileage ?? 0);
+        const currentMileage = Number(vehicle.currentMileage ?? 0);
         if (log.trackingValue > currentMileage) {
-          await apiPut(`/api/crud/rooms/${log.roomId}`, {
-            metadata: { ...room.metadata, currentMileage: log.trackingValue },
+          await apiPut(`/api/crud/vehicles/${log.vehicleId}`, {
+            currentMileage: log.trackingValue,
           });
-          queryClient.invalidateQueries({ queryKey: ['rooms'] });
+          queryClient.invalidateQueries({ queryKey: ['vehicles'] });
         }
       } catch {
         // Non-critical side effect — don't fail the whole add

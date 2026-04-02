@@ -26,6 +26,7 @@ import { Calendar } from './pages/Calendar';
 import { Settings } from './pages/Settings';
 import { InventoryList } from './pages/InventoryList';
 import { InventoryForm } from './pages/InventoryForm';
+import { VehicleForm } from './pages/VehicleForm';
 import { StubPage } from './pages/StubPage';
 import { apiGet, apiPost } from './services/api';
 import type { AppSettings, Palace } from './types';
@@ -116,6 +117,10 @@ function AppRoutes() {
 
           {/* Notes */}
           <Route path="room/:id/notes" element={<NotesList />} />
+
+          {/* Vehicles (garage) */}
+          <Route path="room/:id/vehicle/new" element={<VehicleForm />} />
+          <Route path="room/:id/vehicle/:vid" element={<VehicleForm />} />
 
           {/* Inventory */}
           <Route path="room/:id/inventory" element={<InventoryList />} />

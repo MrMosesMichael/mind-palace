@@ -40,9 +40,27 @@ export interface Room {
   updatedAt: string;
 }
 
+export interface Vehicle {
+  id?: number;
+  roomId: number;
+  name: string;
+  make?: string;
+  model?: string;
+  year?: number;
+  vin?: string;
+  licensePlate?: string;
+  color?: string;
+  currentMileage?: number;
+  unitSystem: 'miles' | 'km';
+  photoId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Schedule {
   id?: number;
   roomId: number;
+  vehicleId?: number;
   name: string;
   description?: string;
   triggerType: 'time' | 'mileage' | 'seasonal' | 'manual';
@@ -64,6 +82,7 @@ export interface Schedule {
 export interface TaskLog {
   id?: number;
   roomId: number;
+  vehicleId?: number;
   scheduleId?: number;
   title: string;
   description?: string;
@@ -158,7 +177,6 @@ export interface Photo {
   stepId?: number;
   noteId?: number;
   caption?: string;
-  thumbnailBlob?: Blob;
   mimeType: string;
   sizeBytes: number;
   takenAt?: string;

@@ -46,18 +46,19 @@ router.post('/upload', upload.single('file'), (req: Request, res: Response) => {
 
   const userId = req.user!.userId;
   const photoId = path.basename(req.file.filename, '.jpg');
-  const { roomId, procedureId, logEntryId, stepId, caption } = req.body;
+  const { roomId, procedureId, logEntryId, stepId, noteId, caption } = req.body;
   const now = new Date().toISOString();
 
   db.prepare(`
-    INSERT INTO photos (id, userId, roomId, procedureId, logEntryId, stepId, caption, mimeType, sizeBytes, createdAt)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO photos (id, userId, roomId, procedureId, logEntryId, stepId, noteId, caption, mimeType, sizeBytes, createdAt)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     photoId, userId,
     roomId ? Number(roomId) : null,
     procedureId ? Number(procedureId) : null,
     logEntryId ? Number(logEntryId) : null,
     stepId ? Number(stepId) : null,
+    noteId ? Number(noteId) : null,
     caption || null,
     req.file.mimetype,
     req.file.size,
@@ -70,6 +71,7 @@ router.post('/upload', upload.single('file'), (req: Request, res: Response) => {
     procedureId: procedureId ? Number(procedureId) : undefined,
     logEntryId: logEntryId ? Number(logEntryId) : undefined,
     stepId: stepId ? Number(stepId) : undefined,
+    noteId: noteId ? Number(noteId) : undefined,
     caption: caption || undefined,
     mimeType: req.file.mimetype,
     sizeBytes: req.file.size,

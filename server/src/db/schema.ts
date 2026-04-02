@@ -219,6 +219,25 @@ export function initializeDatabase(): void {
       updatedAt TEXT NOT NULL
     );
 
+    -- Vehicles (for garage rooms)
+    CREATE TABLE IF NOT EXISTS vehicles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      userId INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      roomId INTEGER NOT NULL REFERENCES rooms(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      make TEXT,
+      model TEXT,
+      year INTEGER,
+      vin TEXT,
+      licensePlate TEXT,
+      color TEXT,
+      currentMileage REAL,
+      unitSystem TEXT DEFAULT 'miles',
+      photoId TEXT,
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL
+    );
+
     -- Reminders
     CREATE TABLE IF NOT EXISTS reminders (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -265,6 +284,8 @@ export function initializeDatabase(): void {
     CREATE INDEX IF NOT EXISTS idx_inventory_roomId ON inventory(roomId);
     CREATE INDEX IF NOT EXISTS idx_refresh_tokens_userId ON refresh_tokens(userId);
     CREATE INDEX IF NOT EXISTS idx_refresh_tokens_token ON refresh_tokens(token);
+    CREATE INDEX IF NOT EXISTS idx_vehicles_roomId ON vehicles(roomId);
+    CREATE INDEX IF NOT EXISTS idx_vehicles_userId ON vehicles(userId);
   `);
 
   // --- ALTER TABLE migrations for existing databases ---
@@ -288,6 +309,14 @@ export function initializeDatabase(): void {
 
   try {
     db.exec(`ALTER TABLE photos ADD COLUMN noteId INTEGER`);
+  } catch { /* Column already exists */ }
+
+  try {
+    db.exec(`ALTER TABLE schedules ADD COLUMN vehicleId INTEGER`);
+  } catch { /* Column already exists */ }
+
+  try {
+    db.exec(`ALTER TABLE task_logs ADD COLUMN vehicleId INTEGER`);
   } catch { /* Column already exists */ }
 
   // --- Indexes that depend on ALTER TABLE columns ---

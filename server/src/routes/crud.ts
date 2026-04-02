@@ -56,7 +56,22 @@ function deleteNoteChildren(userId: number, noteId: number): void {
   deletePhotoRecordsAndFiles(userId, 'noteId = ?', [noteId]);
 }
 
+function deleteVehicleChildren(userId: number, vehicleId: number): void {
+  // Unlink schedules and task_logs from this vehicle (don't delete them — they belong to the room)
+  db.prepare('UPDATE schedules SET vehicleId = NULL WHERE userId = ? AND vehicleId = ?').run(userId, vehicleId);
+  db.prepare('UPDATE task_logs SET vehicleId = NULL WHERE userId = ? AND vehicleId = ?').run(userId, vehicleId);
+}
+
 function deleteRoomChildren(userId: number, roomId: number): void {
+  // Delete vehicles for this room
+  const vehicles = db.prepare(
+    'SELECT id FROM vehicles WHERE userId = ? AND roomId = ?'
+  ).all(userId, roomId) as { id: number }[];
+  for (const v of vehicles) {
+    deleteVehicleChildren(userId, v.id);
+  }
+  db.prepare('DELETE FROM vehicles WHERE userId = ? AND roomId = ?').run(userId, roomId);
+
   // Delete schedules for this room
   db.prepare('DELETE FROM schedules WHERE userId = ? AND roomId = ?').run(userId, roomId);
 
@@ -429,6 +444,9 @@ router.delete('/:table/:id', (req: Request, res: Response) => {
           break;
         case 'procedures':
           deleteProcedureChildren(userId, Number(recordId));
+          break;
+        case 'vehicles':
+          deleteVehicleChildren(userId, Number(recordId));
           break;
         case 'notes':
           deleteNoteChildren(userId, Number(recordId));

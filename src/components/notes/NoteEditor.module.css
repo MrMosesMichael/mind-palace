@@ -1,0 +1,105 @@
+.editor {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-surface);
+  overflow: hidden;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-raised);
+}
+
+.toolBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 28px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-family: var(--font-sans);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.toolBtn:hover {
+  background: var(--color-bg-surface);
+  color: var(--color-text);
+}
+
+.toolBtn.active {
+  background: var(--color-primary-muted);
+  color: var(--color-primary);
+}
+
+.toolSeparator {
+  width: 1px;
+  height: 18px;
+  background: var(--color-border);
+  margin: 0 4px;
+}
+
+.editorContent {
+  padding: var(--space-sm) var(--space-md);
+  min-height: 120px;
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  color: var(--color-text);
+}
+
+/* TipTap ProseMirror styling */
+.editorContent :global(.tiptap) {
+  outline: none;
+  min-height: 100px;
+}
+
+.editorContent :global(.tiptap p) {
+  margin: 0 0 0.5em 0;
+}
+
+.editorContent :global(.tiptap h3) {
+  font-size: 1rem;
+  font-weight: 600;
+  margin: 0.75em 0 0.25em 0;
+  color: var(--color-text);
+}
+
+.editorContent :global(.tiptap ul),
+.editorContent :global(.tiptap ol) {
+  padding-left: 1.25em;
+  margin: 0.25em 0;
+}
+
+.editorContent :global(.tiptap li) {
+  margin-bottom: 0.15em;
+}
+
+.editorContent :global(.tiptap img) {
+  max-width: 100%;
+  border-radius: var(--radius-sm);
+  margin: 0.5em 0;
+}
+
+.editorContent :global(.tiptap p.is-editor-empty:first-child::before) {
+  content: attr(data-placeholder);
+  color: var(--color-text-muted);
+  pointer-events: none;
+  float: left;
+  height: 0;
+}
+
+/* Inline image in editor */
+.inlineImage {
+  max-width: 100%;
+  border-radius: var(--radius-sm);
+  margin: 0.5em 0;
+}

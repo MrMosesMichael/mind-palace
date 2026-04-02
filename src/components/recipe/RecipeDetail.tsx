@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import type { Procedure, ProcedureStep, Supply, Reference } from '../../types';
 import { DIFFICULTY_LABELS } from '../../lib/constants';
 import { IngredientList } from './IngredientList';
 import { ServingsAdjuster } from './ServingsAdjuster';
 import { PhotoThumbnail } from '../photo/PhotoThumbnail';
-import { usePhotos } from '../../hooks/usePhotos';
+import { usePhotos, getPhotoUrl } from '../../hooks/usePhotos';
 import { lore } from '../../lib/lore';
 import styles from './RecipeDetail.module.css';
 
@@ -18,6 +18,7 @@ interface RecipeDetailProps {
   roomId?: number;
   procedureId?: number;
   onAddHeroPhoto?: () => void;
+  onAddStepPhoto?: (stepId: number) => void;
 }
 
 const DIETARY_TAGS = ['vegetarian', 'vegan', 'gluten-free', 'dairy-free', 'keto', 'paleo'];
@@ -32,6 +33,7 @@ export function RecipeDetail({
   roomId,
   procedureId,
   onAddHeroPhoto,
+  onAddStepPhoto,
 }: RecipeDetailProps) {
   const defaultServings = (procedure as Procedure & { metadata?: Record<string, unknown> }).metadata?.servings as number ?? 4;
   const [servings, setServings] = useState(defaultServings);
@@ -45,22 +47,6 @@ export function RecipeDetail({
     procedureId ? { procedureId } : {}
   );
   const heroPhoto = heroPhotos.find((p) => !p.stepId);
-  const [heroUrl, setHeroUrl] = useState<string | null>(null);
-  const heroUrlRef = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (heroPhoto?.thumbnailBlob) {
-      const url = URL.createObjectURL(heroPhoto.thumbnailBlob);
-      heroUrlRef.current = url;
-      setHeroUrl(url);
-      return () => {
-        URL.revokeObjectURL(url);
-        heroUrlRef.current = null;
-      };
-    } else {
-      setHeroUrl(null);
-    }
-  }, [heroPhoto]);
 
   return (
     <div className={styles.recipe}>
@@ -70,8 +56,8 @@ export function RecipeDetail({
         onClick={onAddHeroPhoto}
         style={onAddHeroPhoto ? { cursor: 'pointer' } : undefined}
       >
-        {heroUrl ? (
-          <img src={heroUrl} alt={procedure.title} className={styles.heroImg} />
+        {heroPhoto ? (
+          <img src={getPhotoUrl(heroPhoto.id)} alt={procedure.title} className={styles.heroImg} />
         ) : (
           <>
             <span className={styles.photoIcon}>{'\uD83C\uDF73'}</span>
@@ -141,6 +127,9 @@ export function RecipeDetail({
                     <span className={styles.equipmentIcon}>{'\uD83C\uDF73'}</span>
                     <span>{item.name}</span>
                     {item.identifier && <span className={styles.equipmentSpec}>{item.identifier}</span>}
+                    {item.photoId && (
+                      <PhotoThumbnail roomId={roomId} specificPhotoIds={[item.photoId]} maxShow={1} />
+                    )}
                   </li>
                 ))}
               </ul>
@@ -192,7 +181,11 @@ export function RecipeDetail({
                   )}
 
                   {/* Step photos */}
-                  <PhotoThumbnail stepId={step.id} roomId={roomId} />
+                  <PhotoThumbnail
+                    stepId={step.id}
+                    roomId={roomId}
+                    onAdd={onAddStepPhoto && step.id ? () => onAddStepPhoto(step.id!) : undefined}
+                  />
                 </div>
               </li>
             ))}

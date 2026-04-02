@@ -7,6 +7,8 @@ import { getModule } from '../modules';
 import { getScheduleStatus } from '../services/reminderService';
 import { lore } from '../lib/lore';
 import { apiGet } from '../services/api';
+import { useVehicles } from '../hooks/useVehicles';
+import { VehicleCard } from '../components/garage/VehicleCard';
 import type { Schedule, TaskLog, Procedure, Reference, Photo, Note, Inventory } from '../types';
 import styles from './RoomDetail.module.css';
 
@@ -58,7 +60,8 @@ export function RoomDetail() {
   const scheduleCounts = (() => {
     let overdue = 0, dueSoon = 0;
     for (const s of schedules) {
-      const status = getScheduleStatus(s, room);
+      const vehicle = s.vehicleId ? vehicles.find((v) => v.id === s.vehicleId) : undefined;
+      const status = getScheduleStatus(s, room, vehicle);
       if (status === 'overdue') overdue++;
       else if (status === 'due_soon') dueSoon++;
     }
@@ -101,6 +104,9 @@ export function RoomDetail() {
     enabled: !!roomId,
   });
 
+  const isGarage = room?.moduleType === 'garage';
+  const { vehicles } = useVehicles(isGarage ? roomId : undefined);
+
   const inventoryLowStock = inventoryItems.filter(
     (item) => item.minQuantity != null && item.quantity <= item.minQuantity
   ).length;
@@ -116,13 +122,9 @@ export function RoomDetail() {
   const mod = getModule(room.moduleType);
   const meta = room.metadata as Record<string, string | number>;
 
-  const subtitle = mod?.type === 'garage'
-    ? [meta.year, meta.make, meta.model].filter(Boolean).join(' ')
+  const subtitle = isGarage
+    ? `${vehicles.length} vehicle${vehicles.length !== 1 ? 's' : ''}`
     : room.description ?? '';
-
-  const trackingValue = mod?.trackingUnit && meta.currentMileage
-    ? `${Number(meta.currentMileage).toLocaleString()} ${meta.unitSystem ?? mod.trackingUnit}`
-    : null;
 
   const isKitchen = room.moduleType === 'kitchen';
 
@@ -163,10 +165,28 @@ export function RoomDetail() {
       <div className={styles.accentBar} />
 
       <div className={styles.content}>
-        {trackingValue && (
-          <div className={styles.trackingBanner}>
-            <span className={styles.trackingLabel}>Odometer</span>
-            <span className={styles.trackingValue}>{trackingValue}</span>
+        {/* Vehicle list for garage rooms */}
+        {isGarage && (
+          <div className={styles.vehicleSection}>
+            <div className={styles.vehicleSectionHeader}>
+              <h3 className={styles.vehicleSectionTitle}>Vehicles</h3>
+              <Button size="sm" variant="ghost" onClick={() => navigate(`${basePath}/vehicle/new`)}>
+                + Add Vehicle
+              </Button>
+            </div>
+            {vehicles.length === 0 ? (
+              <p className={styles.vehicleEmpty}>No vehicles added yet. Add your first vehicle above.</p>
+            ) : (
+              <div className={styles.vehicleList}>
+                {vehicles.map((v) => (
+                  <VehicleCard
+                    key={v.id}
+                    vehicle={v}
+                    onClick={() => navigate(`${basePath}/vehicle/${v.id}`)}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
 
