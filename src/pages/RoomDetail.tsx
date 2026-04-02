@@ -51,6 +51,9 @@ export function RoomDetail() {
   const { deleteRoom } = useRooms();
   const navigate = useNavigate();
 
+  const isGarage = room?.moduleType === 'garage';
+  const { vehicles } = useVehicles(isGarage ? roomId : undefined);
+
   const { data: schedules = [] } = useQuery({
     queryKey: ['schedules', { roomId }],
     queryFn: () => apiGet<Schedule[]>(`/api/crud/schedules?roomId=${roomId}&isActive=true`),
@@ -104,9 +107,6 @@ export function RoomDetail() {
     enabled: !!roomId,
   });
 
-  const isGarage = room?.moduleType === 'garage';
-  const { vehicles } = useVehicles(isGarage ? roomId : undefined);
-
   const inventoryLowStock = inventoryItems.filter(
     (item) => item.minQuantity != null && item.quantity <= item.minQuantity
   ).length;
@@ -120,7 +120,6 @@ export function RoomDetail() {
   }
 
   const mod = getModule(room.moduleType);
-  const meta = room.metadata as Record<string, string | number>;
 
   const subtitle = isGarage
     ? `${vehicles.length} vehicle${vehicles.length !== 1 ? 's' : ''}`
