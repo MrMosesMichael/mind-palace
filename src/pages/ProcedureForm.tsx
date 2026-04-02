@@ -15,6 +15,7 @@ import { useProcedureReferences } from '../hooks/useReferences';
 import { useRoom } from '../hooks/useRooms';
 import { getModule } from '../modules';
 import { apiFetch } from '../services/apiClient';
+import { compressImage } from '../lib/imageCompression';
 import { lore } from '../lib/lore';
 import styles from './ProcedureForm.module.css';
 
@@ -301,10 +302,11 @@ export function ProcedureForm() {
     const file = files[0];
     const draft = stepDrafts[activeStepPhotoIndex];
 
+    const compressed = await compressImage(file);
     if (draft.id) {
       // Existing step — save photo immediately
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', compressed);
       formData.append('roomId', String(roomId));
       if (pid) formData.append('procedureId', String(pid));
       formData.append('stepId', String(draft.id));
@@ -312,7 +314,7 @@ export function ProcedureForm() {
     } else {
       // New step — buffer for saving after step creation
       updateStepDraft(activeStepPhotoIndex, {
-        pendingPhotos: [...draft.pendingPhotos, file],
+        pendingPhotos: [...draft.pendingPhotos, compressed],
       });
     }
 
@@ -326,8 +328,9 @@ export function ProcedureForm() {
     if (!files || files.length === 0 || activeSupplyPhotoIndex === null) return;
     const file = files[0];
     try {
+      const compressed = await compressImage(file);
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', compressed);
       formData.append('roomId', String(roomId));
       const uploadRes = await apiFetch('/api/photos/upload', { method: 'POST', body: formData });
       if (!uploadRes.ok) {

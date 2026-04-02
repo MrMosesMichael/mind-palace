@@ -1,4 +1,4 @@
-import { useRef, useCallback } from 'react';
+import { useRef, useCallback, useState, useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Image from '@tiptap/extension-image';
@@ -12,9 +12,17 @@ interface NoteEditorProps {
   placeholder?: string;
 }
 
+const IMAGE_SIZES = [
+  { label: 'S', width: 200 },
+  { label: 'M', width: 400 },
+  { label: 'L', width: 600 },
+  { label: 'Full', width: 0 },
+];
+
 export function NoteEditor({ content, onChange, onImageInsert, placeholder }: NoteEditorProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isUploading = useRef(false);
+  const [imageSelected, setImageSelected] = useState(false);
 
   const editor = useEditor({
     extensions: [
@@ -22,6 +30,12 @@ export function NoteEditor({ content, onChange, onImageInsert, placeholder }: No
       Image.configure({
         inline: false,
         HTMLAttributes: { class: styles.inlineImage },
+        resize: {
+          enabled: true,
+          minWidth: 100,
+          minHeight: 50,
+          alwaysPreserveAspectRatio: true,
+        },
       }),
       Placeholder.configure({
         placeholder: placeholder ?? 'Write your note...',
@@ -32,6 +46,20 @@ export function NoteEditor({ content, onChange, onImageInsert, placeholder }: No
       onChange(ed.getHTML());
     },
   });
+
+  // Track whether an image node is currently selected
+  useEffect(() => {
+    if (!editor) return;
+    const updateSelection = () => {
+      setImageSelected(editor.isActive('image'));
+    };
+    editor.on('selectionUpdate', updateSelection);
+    editor.on('transaction', updateSelection);
+    return () => {
+      editor.off('selectionUpdate', updateSelection);
+      editor.off('transaction', updateSelection);
+    };
+  }, [editor]);
 
   const handleImageClick = useCallback(() => {
     fileInputRef.current?.click();
@@ -52,6 +80,16 @@ export function NoteEditor({ content, onChange, onImageInsert, placeholder }: No
       e.target.value = '';
     }
   }, [editor, onImageInsert]);
+
+  function setImageSize(width: number) {
+    if (!editor) return;
+    if (width === 0) {
+      // Full width — remove explicit dimensions
+      editor.chain().focus().updateAttributes('image', { width: null, height: null }).run();
+    } else {
+      editor.chain().focus().updateAttributes('image', { width }).run();
+    }
+  }
 
   if (!editor) return null;
 
@@ -107,6 +145,24 @@ export function NoteEditor({ content, onChange, onImageInsert, placeholder }: No
         >
           {'\uD83D\uDDBC'}
         </button>
+
+        {/* Image size controls — shown when image is selected */}
+        {imageSelected && (
+          <>
+            <div className={styles.toolSeparator} />
+            {IMAGE_SIZES.map((size) => (
+              <button
+                key={size.label}
+                type="button"
+                className={styles.sizeBtn}
+                onClick={() => setImageSize(size.width)}
+                title={size.width ? `${size.width}px` : 'Full width'}
+              >
+                {size.label}
+              </button>
+            ))}
+          </>
+        )}
       </div>
 
       <EditorContent editor={editor} className={styles.editorContent} />

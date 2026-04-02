@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiGet, apiDelete as apiDeleteFn } from '../services/api';
 import { apiFetch, getTokens } from '../services/apiClient';
+import { compressImage } from '../lib/imageCompression';
 import type { Photo } from '../types';
 
 interface PhotoFilters {
@@ -35,8 +36,9 @@ export function usePhotos(filters: PhotoFilters) {
     file: File,
     metadata: { caption?: string }
   ): Promise<Photo> {
+    const compressed = await compressImage(file);
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', compressed);
     if (metadata.caption) formData.append('caption', metadata.caption);
     if (filters.roomId !== undefined) formData.append('roomId', String(filters.roomId));
     if (filters.procedureId !== undefined) formData.append('procedureId', String(filters.procedureId));

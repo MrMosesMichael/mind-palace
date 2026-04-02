@@ -12,6 +12,7 @@ import { usePhotos } from '../hooks/usePhotos';
 import { useRoom } from '../hooks/useRooms';
 import { getModule } from '../modules';
 import { apiFetch } from '../services/apiClient';
+import { compressImage } from '../lib/imageCompression';
 import { DIFFICULTY_LABELS } from '../lib/constants';
 import { lore } from '../lib/lore';
 import styles from './ProcedureDetail.module.css';
@@ -53,8 +54,9 @@ export function ProcedureDetail() {
     const files = e.target.files;
     if (!files || files.length === 0 || targetStepId === null) return;
     try {
+      const compressed = await compressImage(files[0]);
       const formData = new FormData();
-      formData.append('file', files[0]);
+      formData.append('file', compressed);
       if (roomId) formData.append('roomId', String(roomId));
       formData.append('procedureId', String(procedureId));
       formData.append('stepId', String(targetStepId));

@@ -10,6 +10,7 @@ import { NoteEditor } from '../components/notes/NoteEditor';
 import { useNotes } from '../hooks/useNotes';
 import { useRoom } from '../hooks/useRooms';
 import { apiFetch } from '../services/apiClient';
+import { compressImage } from '../lib/imageCompression';
 import { getPhotoUrl } from '../hooks/usePhotos';
 import { formatDate } from '../lib/formatters';
 import { lore } from '../lib/lore';
@@ -61,8 +62,9 @@ export function NotesList() {
   }
 
   async function handleImageInsert(file: File): Promise<string> {
+    const compressed = await compressImage(file);
     const formData = new FormData();
-    formData.append('file', file);
+    formData.append('file', compressed);
     formData.append('roomId', String(roomId));
     if (editingId) formData.append('noteId', String(editingId));
 

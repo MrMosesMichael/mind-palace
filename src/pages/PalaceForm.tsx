@@ -6,6 +6,7 @@ import { Input } from '../components/ui/Input';
 import { usePalaces, usePalace } from '../hooks/usePalaces';
 import { getPhotoUrl } from '../hooks/usePhotos';
 import { apiFetch } from '../services/apiClient';
+import { compressImage } from '../lib/imageCompression';
 import { apiDelete } from '../services/api';
 import { lore } from '../lib/lore';
 import styles from './PalaceForm.module.css';
@@ -48,8 +49,9 @@ export function PalaceForm() {
 
     setIsUploading(true);
     try {
+      const compressed = await compressImage(file);
       const formData = new FormData();
-      formData.append('file', file);
+      formData.append('file', compressed);
       formData.append('caption', 'Palace artwork');
       const res = await apiFetch('/api/photos/upload', { method: 'POST', body: formData });
       if (!res.ok) throw new Error('Upload failed');
