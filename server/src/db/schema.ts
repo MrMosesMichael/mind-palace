@@ -267,6 +267,19 @@ export function initializeDatabase(): void {
       updatedAt TEXT NOT NULL
     );
 
+    -- API Keys
+    CREATE TABLE IF NOT EXISTS api_keys (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      userId INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      keyHash TEXT NOT NULL,
+      keyPrefix TEXT NOT NULL,
+      scopes TEXT DEFAULT '["read","write"]',
+      lastUsedAt TEXT,
+      expiresAt TEXT,
+      createdAt TEXT NOT NULL
+    );
+
     -- Indexes for columns that exist in CREATE TABLE
     CREATE INDEX IF NOT EXISTS idx_palaces_userId ON palaces(userId);
     CREATE INDEX IF NOT EXISTS idx_room_hotspots_palaceId ON room_hotspots(palaceId);
@@ -286,6 +299,8 @@ export function initializeDatabase(): void {
     CREATE INDEX IF NOT EXISTS idx_refresh_tokens_token ON refresh_tokens(token);
     CREATE INDEX IF NOT EXISTS idx_vehicles_roomId ON vehicles(roomId);
     CREATE INDEX IF NOT EXISTS idx_vehicles_userId ON vehicles(userId);
+    CREATE INDEX IF NOT EXISTS idx_api_keys_keyHash ON api_keys(keyHash);
+    CREATE INDEX IF NOT EXISTS idx_api_keys_userId ON api_keys(userId);
   `);
 
   // --- ALTER TABLE migrations for existing databases ---

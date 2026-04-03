@@ -1,0 +1,42 @@
+import { Router } from 'express';
+import palaces from './palaces.js';
+import rooms from './rooms.js';
+import roomHotspots from './room-hotspots.js';
+import vehicles from './vehicles.js';
+import schedules from './schedules.js';
+import taskLogs from './task-logs.js';
+import procedures from './procedures.js';
+import procedureSteps from './procedure-steps.js';
+import supplies from './supplies.js';
+import inventory from './inventory.js';
+import references from './references.js';
+import photos from './photos.js';
+import notes from './notes.js';
+import reminders from './reminders.js';
+import settings from './settings.js';
+import search from './search.js';
+import apiKeys from './api-keys.js';
+import admin from './admin.js';
+
+const router = Router();
+
+router.use('/palaces', palaces);
+router.use('/rooms', rooms);
+router.use('/room-hotspots', roomHotspots);
+router.use('/vehicles', vehicles);
+router.use('/schedules', schedules);
+router.use('/task-logs', taskLogs);
+router.use('/procedures', procedures);
+router.use('/procedure-steps', procedureSteps);
+router.use('/supplies', supplies);
+router.use('/inventory', inventory);
+router.use('/references', references);
+router.use('/photos', photos);
+router.use('/notes', notes);
+router.use('/reminders', reminders);
+router.use('/settings', settings);
+router.use('/search', search);
+router.use('/api-keys', apiKeys);
+router.use('/admin', admin);
+
+export default router;

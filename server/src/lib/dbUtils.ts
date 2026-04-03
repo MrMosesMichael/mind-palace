@@ -113,7 +113,7 @@ export function apiNameFromSqlTable(sqlTable: string): string | undefined {
 
 // Filter params that map to snake_case column names for each table
 export const FILTER_COLUMNS: Record<string, Record<string, string>> = {
-  rooms: { palaceId: 'palaceId', isArchived: 'isArchived' },
+  rooms: { palaceId: 'palaceId', isArchived: 'isArchived', moduleType: 'moduleType' },
   room_hotspots: { palaceId: 'palaceId', roomId: 'roomId' },
   schedules: { roomId: 'roomId', isActive: 'isActive', vehicleId: 'vehicleId' },
   task_logs: { roomId: 'roomId', scheduleId: 'scheduleId', vehicleId: 'vehicleId' },
